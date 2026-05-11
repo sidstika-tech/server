@@ -7,19 +7,17 @@ require('dotenv').config();
 
 const app = express();
 
-app.set('trust proxy', 1);
-
-// Rate limiting (Fixed to use "message" format)
+// Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: { message: 'Too many requests, please try again later.' }
+  message: { error: 'Too many requests, please try again later.' }
 });
 
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
-  message: { message: 'AI rate limit exceeded, please wait a moment.' }
+  message: { error: 'AI rate limit exceeded, please wait a moment.' }
 });
 
 // Middleware
@@ -32,9 +30,8 @@ app.use(morgan('dev'));
 app.use('/api/', limiter);
 app.use('/api/chat', aiLimiter);
 app.use('/api/generator', aiLimiter);
-app.use('/api/market', aiLimiter); // Updated path
+app.use('/api/market-research', aiLimiter);
 app.use('/api/marketing', aiLimiter);
-app.use('/api/tools', aiLimiter); // Moved up to group limiters
 
 // --- VERCEL DATABASE CONNECTION FIX ---
 const mongooseOptions = {
@@ -64,28 +61,22 @@ app.use(async (req, res, next) => {
     await connectDB();
     next();
   } catch (err) {
-    return res.status(500).json({ message: 'Database connection failed' }); // Fixed
+    return res.status(500).json({ error: 'Database connection failed' });
   }
 });
 // --------------------------------------
 
-// Core Routes
+// Routes
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/chat', require('./routes/chat.routes'));
 app.use('/api/generator', require('./routes/generator.routes'));
+app.use('/api/market-research', require('./routes/marketResearch.routes'));
 app.use('/api/marketing', require('./routes/marketing.routes'));
-app.use('/api/tools', require('./routes/tools.routes'));
 app.use('/api/user', require('./routes/user.routes'));
-
-// Updated Route Paths to match the New React Frontend
-app.use('/api/market', require('./routes/marketResearch.routes'));
-app.use('/api/billing', require('./routes/membership.routes'));
-app.use('/api/content', require('./routes/promptWriter.routes'));
-
-// Added missing routes required by the frontend
-app.use('/api/dashboard', require('./routes/dashboard.routes'));
-app.use('/api/vault', require('./routes/vault.routes'));
-app.use('/api/admin', require('./routes/admin.routes'));
+app.use('/api/membership', require('./routes/membership.routes'));
+app.use('/api/prompt-writer', require('./routes/promptWriter.routes'));
+app.use('/api/tools', require('./routes/tools.routes'));
+app.use('/api/tools', aiLimiter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -96,7 +87,7 @@ app.get('/api/health', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({
-    message: err.message || 'Internal Server Error', // Fixed
+    error: err.message || 'Internal Server Error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
