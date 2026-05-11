@@ -59,15 +59,22 @@ app.use((err, req, res, next) => {
   });
 });
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI)
+// MongoDB connection configuration
+const mongooseOptions = {
+  bufferCommands: false, // Stops the 10000ms timeout buffering
+  autoIndex: true,       // Ensures findOne() and other queries stay performant
+};
+
+// Updated MongoDB connection
+mongoose.connect(process.env.MONGODB_URI, mongooseOptions)
   .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err.message);
+    // Crucial: In production, we want to know exactly what failed immediately
+  });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Double Eight AI Server running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV}`);
+// Also add a listener for errors that happen after the initial connection
+mongoose.connection.on('error', err => {
+  console.error('📡 Runtime MongoDB error:', err);
 });
-
 module.exports = app;
