@@ -7,17 +7,20 @@ require('dotenv').config();
 
 const app = express();
 
-// Rate limiting
+// Trust Vercel's proxy (Fixes the X-Forwarded-For error)
+app.set('trust proxy', 1);
+
+// Rate limiting (Fixed to use "message")
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: { error: 'Too many requests, please try again later.' }
+  message: { message: 'Too many requests, please try again later.' }
 });
 
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
-  message: { error: 'AI rate limit exceeded, please wait a moment.' }
+  message: { message: 'AI rate limit exceeded, please wait a moment.' }
 });
 
 // Middleware
@@ -32,6 +35,7 @@ app.use('/api/chat', aiLimiter);
 app.use('/api/generator', aiLimiter);
 app.use('/api/market-research', aiLimiter);
 app.use('/api/marketing', aiLimiter);
+app.use('/api/tools', aiLimiter);
 
 // --- VERCEL DATABASE CONNECTION FIX ---
 const mongooseOptions = {
@@ -61,12 +65,12 @@ app.use(async (req, res, next) => {
     await connectDB();
     next();
   } catch (err) {
-    return res.status(500).json({ error: 'Database connection failed' });
+    return res.status(500).json({ message: 'Database connection failed' }); // Fixed
   }
 });
 // --------------------------------------
 
-// Routes
+// Routes (These perfectly match your Vanilla JS frontend!)
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/chat', require('./routes/chat.routes'));
 app.use('/api/generator', require('./routes/generator.routes'));
@@ -76,7 +80,6 @@ app.use('/api/user', require('./routes/user.routes'));
 app.use('/api/membership', require('./routes/membership.routes'));
 app.use('/api/prompt-writer', require('./routes/promptWriter.routes'));
 app.use('/api/tools', require('./routes/tools.routes'));
-app.use('/api/tools', aiLimiter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -87,7 +90,7 @@ app.get('/api/health', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error',
+    message: err.message || 'Internal Server Error', // Fixed
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
