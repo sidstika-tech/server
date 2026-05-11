@@ -61,20 +61,34 @@ app.use((err, req, res, next) => {
 
 // MongoDB connection configuration
 const mongooseOptions = {
-  bufferCommands: false, // Stops the 10000ms timeout buffering
-  autoIndex: true,       // Ensures findOne() and other queries stay performant
+  bufferCommands: false, 
+  autoIndex: true,       
 };
 
-// Updated MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, mongooseOptions)
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => {
-    console.error('❌ MongoDB connection error:', err.message);
-    // Crucial: In production, we want to know exactly what failed immediately
-  });
+// 1. Define a function to connect and then start the server
+const startServer = async () => {
+  try {
+    // Wait for the DB to be ready before moving to the next line
+    await mongoose.connect(process.env.MONGODB_URI, mongooseOptions);
+    console.log('✅ MongoDB connected');
 
-// Also add a listener for errors that happen after the initial connection
-mongoose.connection.on('error', err => {
-  console.error('📡 Runtime MongoDB error:', err);
-});
+    // 2. Only start listening for requests AFTER the DB is connected
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`🚀 Double Eight AI Server running on port ${PORT}`);
+      console.log(`📡 Environment: ${process.env.NODE_ENV}`);
+    });
+
+  } catch (err) {
+    console.error('❌ MongoDB connection error:', err.message);
+    // If DB fails, we don't start the server at all
+    process.exit(1);
+  }
+};
+
+// 3. Run the function
+startServer();
+
+// Keep your export for Vercel
+module.exports = app;
 module.exports = app;
