@@ -22,7 +22,7 @@ const aiLimiter = rateLimit({
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://doubleeight.online',
+  origin: process.env.CLIENT_URL || 'https://doubleeight.online',
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
