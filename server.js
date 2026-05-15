@@ -60,6 +60,7 @@ app.use('/api/user',           require('./routes/user.routes'));
 app.use('/api/membership',     require('./routes/membership.routes'));
 app.use('/api/prompt-writer',  require('./routes/promptWriter.routes'));
 app.use('/api/tools',          require('./routes/tools.routes'));
+app.use('/api/community',      require('./routes/community.routes'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString(), service: 'Double Eight AI' }));
 
