@@ -10,8 +10,8 @@ const GENERATORS = {
   pitch_deck:        (i) => aiService.generatePitchDeck(i),
 };
 const LABELS = {
-  business_plan:'Business Plan', brand_kit:'Brand Kit',
-  competitor_matrix:'Competitor Analysis', launch_roadmap:'30-Day Launch Roadmap', pitch_deck:'Pitch Deck'
+  business_plan: 'Business Plan', brand_kit: 'Brand Kit',
+  competitor_matrix: 'Competitor Analysis', launch_roadmap: '30-Day Launch Roadmap', pitch_deck: 'Pitch Deck',
 };
 
 exports.generate = async (req, res) => {
@@ -19,17 +19,19 @@ exports.generate = async (req, res) => {
     const { type, inputs } = req.body;
     if (!type || !inputs) return res.status(400).json({ error: 'Type and inputs required' });
     const gen = GENERATORS[type];
-    if (!gen) return res.status(400).json({ error: 'Invalid report type: ' + type });
+    if (!gen) return res.status(400).json({ error: 'Invalid report type' });
 
-    const content = await gen(inputs);
+    const sanitized = aiService.sanitizeInputs(inputs);
+    const content = await gen(sanitized);
     const label = LABELS[type] || type;
-    const title = `${label} — ${inputs.businessName || inputs.niche || 'My Business'}`;
+    const title = `${label} — ${sanitized.businessName || sanitized.niche || 'My Business'}`;
 
-    const report = await Report.create({ user: req.user._id, title, type, content, inputs });
+    const report = await Report.create({ user: req.user._id, title, type, content, inputs: sanitized });
     await User.findByIdAndUpdate(req.user._id, { $inc: { 'usage.reportsGenerated': 1 } });
     res.json({ success: true, report });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('generator.generate error:', err);
+    res.status(500).json({ error: 'Generation failed. Please try again.' });
   }
 };
 
@@ -39,7 +41,8 @@ exports.getReports = async (req, res) => {
       .select('title type createdAt status inputs').sort('-createdAt').limit(50);
     res.json({ success: true, reports });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('generator.getReports error:', err);
+    res.status(500).json({ error: 'Failed to load reports.' });
   }
 };
 
@@ -49,7 +52,8 @@ exports.getReport = async (req, res) => {
     if (!report) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true, report });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('generator.getReport error:', err);
+    res.status(500).json({ error: 'Failed to load report.' });
   }
 };
 
@@ -58,6 +62,7 @@ exports.deleteReport = async (req, res) => {
     await Report.findOneAndDelete({ _id: req.params.id, user: req.user._id });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('generator.deleteReport error:', err);
+    res.status(500).json({ error: 'Failed to delete report.' });
   }
 };

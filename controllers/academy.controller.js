@@ -62,6 +62,7 @@ exports.refresh = async (req, res) => {
     _cacheDate = todayStr();
     res.json({ success: true, data });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('academy.refresh error:', err);
+    res.status(500).json({ error: 'Failed to refresh content.' });
   }
 };

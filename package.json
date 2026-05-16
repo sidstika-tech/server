@@ -1,7 +1,7 @@
 {
   "name": "double-eight-ai-server",
-  "version": "1.0.0",
-  "description": "Double Eight AI Backend Server",
+  "version": "2.0.0",
+  "description": "Double Eight AI Backend — MENA Entrepreneurs Platform",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

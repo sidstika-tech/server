@@ -4,7 +4,7 @@ const { geminiChat } = require('./gemini.service');
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
-// ── Core chat function (Groq — used ONLY for AI Advisor chat) ──────────────
+// ── Core chat function ──────────────────────────────────────────────────────
 async function chat(messages, systemPrompt) {
   const sysMsg = systemPrompt || 'You are Double Eight AI, an expert business advisor. Be detailed, professional, and actionable. Use markdown formatting.';
   const response = await groq.chat.completions.create({
@@ -109,7 +109,7 @@ For each: the slogan + 1 sentence on why it works
 
 // ── PLANNING & STRATEGY ─────────────────────────────────────────────────────
 async function generateBusinessPlan(inputs) {
-  return geminiChat(`Generate a comprehensive, bank-ready business plan:
+  return geminiChat(`Generate a comprehensive, detailed, investor-ready business plan optimized for the MENA/Arab market context if a MENA location is mentioned, otherwise adapt to the specified location:
 
 Business Name: ${inputs.businessName}
 Industry: ${inputs.industry}
@@ -451,6 +451,19 @@ Provide:
 (Top 7 objections with exact responses)`, 'You are a top B2B sales expert specializing in cold outreach and pipeline generation.');
 }
 
+async function generateWebsiteCreation(inputs) {
+  return geminiChat(`You are an expert full-stack web developer and UI designer. Generate a complete professional single-file website.
+Project: ${inputs.businessName}
+Type: ${inputs.content || 'Business / Company'}
+Sections: ${inputs.sections || 'Full (All Sections)'}
+Color Style: ${inputs.colors || 'Dark & Gold (Luxury)'}
+Font Style: ${inputs.fonts || 'Modern Sans-Serif'}
+Interactive: ${inputs.interactive || 'Smooth Scroll + Animations'}
+Extra: ${inputs.extraDetails || 'None'}
+RULES: Return ONLY raw HTML no markdown no backticks. Single file all CSS in style tag all JS in script tag. Google Fonts via link tag. Fully responsive. Real content not Lorem ipsum. Sticky nav smooth scroll. Professional modern design. Pure CSS and vanilla JS only.`,
+    'You are an expert web developer. Output ONLY clean HTML — nothing else.');
+}
+
 async function generateWebsiteCopy(inputs) {
   return geminiChat(`Write high-converting website copy for:
 Business: ${inputs.businessName}
@@ -545,8 +558,32 @@ Timeline: ${inputs.timeline || '3 months'}
 Provide complete strategy with content plan, SEO, social media, paid ads, KPIs, and 90-day roadmap.`, 'You are an expert marketing strategist.');
 }
 
+// ── Input sanitizer — strips prompt injection attempts ──────────────────────
+function sanitizeString(str) {
+  if (!str || typeof str !== 'string') return str;
+  return str
+    .replace(/ignore\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, '[removed]')
+    .replace(/forget\s+(all\s+)?previous\s+instructions?/gi, '[removed]')
+    .replace(/you\s+are\s+now\s+(a|an)/gi, '[removed]')
+    .replace(/act\s+as\s+(a|an)\s+different/gi, '[removed]')
+    .replace(/system\s*prompt/gi, '[removed]')
+    .replace(/<\/?script[^>]*>/gi, '')
+    .trim()
+    .slice(0, 1000);
+}
+
+function sanitizeInputs(inputs) {
+  if (!inputs || typeof inputs !== 'object') return inputs;
+  const clean = {};
+  for (const [k, v] of Object.entries(inputs)) {
+    clean[k] = typeof v === 'string' ? sanitizeString(v) : v;
+  }
+  return clean;
+}
+
 module.exports = {
   chat, streamChat,
+  sanitizeInputs,
   // Brand
   generateBrandKit, generateBusinessName, generateSlogan,
   // Planning
@@ -556,7 +593,7 @@ module.exports = {
   // Marketing
   generateAdCopy, generateSeoKeywords, generateContentCalendar, generateMarketStudy,
   // Sales
-  generateColdEmail, generateWebsiteCopy, generateSalesScript,
+  generateColdEmail, generateWebsiteCreation, generateWebsiteCopy, generateSalesScript,
   // Legacy
   generateMarketResearch, generateMarketingStrategy
 };

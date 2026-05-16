@@ -4,12 +4,13 @@ const ChatSession = require('../models/chatSession.model');
 
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).select('-password');
     const reportCount = await Report.countDocuments({ user: req.user._id });
     const chatCount = await ChatSession.countDocuments({ user: req.user._id, isActive: true });
     res.json({ success: true, user, stats: { reports: reportCount, chats: chatCount } });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('getProfile error:', error);
+    res.status(500).json({ error: 'Failed to load profile.' });
   }
 };
 
@@ -17,13 +18,16 @@ exports.updateProfile = async (req, res) => {
   try {
     const { name, settings } = req.body;
     const update = {};
-    if (name) update.name = name;
-    if (settings) update.settings = { ...req.user.settings, ...settings };
+    if (name) update.name = String(name).trim().slice(0, 100);
+    if (settings && typeof settings === 'object') {
+      update.settings = { ...req.user.settings, ...settings };
+    }
 
-    const user = await User.findByIdAndUpdate(req.user._id, update, { new: true, runValidators: true });
+    const user = await User.findByIdAndUpdate(req.user._id, update, { new: true, runValidators: true }).select('-password');
     res.json({ success: true, user });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('updateProfile error:', error);
+    res.status(500).json({ error: 'Failed to update profile.' });
   }
 };
 
@@ -42,7 +46,8 @@ exports.changePassword = async (req, res) => {
     await user.save();
     res.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('changePassword error:', error);
+    res.status(500).json({ error: 'Failed to update password.' });
   }
 };
 
@@ -51,6 +56,7 @@ exports.deleteAccount = async (req, res) => {
     await User.findByIdAndUpdate(req.user._id, { isActive: false });
     res.json({ success: true, message: 'Account deactivated' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('deleteAccount error:', error);
+    res.status(500).json({ error: 'Failed to deactivate account.' });
   }
 };

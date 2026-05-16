@@ -1,6 +1,6 @@
 const ChatSession = require('../models/chatSession.model');
 const User = require('../models/user.model');
-const { streamChat } = require('../services/ai.service');
+const { streamChat, sanitizeInputs } = require('../services/ai.service');
 
 exports.getSessions = async (req, res) => {
   try {
@@ -10,7 +10,8 @@ exports.getSessions = async (req, res) => {
       .limit(50);
     res.json({ success: true, sessions });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('getSessions error:', error);
+    res.status(500).json({ error: 'Failed to load sessions.' });
   }
 };
 
@@ -19,7 +20,8 @@ exports.createSession = async (req, res) => {
     const session = await ChatSession.create({ user: req.user._id, messages: [] });
     res.status(201).json({ success: true, session });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('createSession error:', error);
+    res.status(500).json({ error: 'Failed to create session.' });
   }
 };
 
@@ -29,7 +31,8 @@ exports.getSession = async (req, res) => {
     if (!session) return res.status(404).json({ error: 'Session not found' });
     res.json({ success: true, session });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('getSession error:', error);
+    res.status(500).json({ error: 'Failed to load session.' });
   }
 };
 
@@ -37,6 +40,10 @@ exports.sendMessage = async (req, res) => {
   try {
     const { message, sessionId } = req.body;
     if (!message) return res.status(400).json({ error: 'Message required' });
+
+    // Sanitize message to prevent prompt injection
+    const cleanMessage = sanitizeInputs({ message }).message || '';
+    if (!cleanMessage) return res.status(400).json({ error: 'Message required' });
 
     let session;
     if (sessionId) {
@@ -46,11 +53,10 @@ exports.sendMessage = async (req, res) => {
       session = await ChatSession.create({ user: req.user._id, messages: [] });
     }
 
-    session.messages.push({ role: 'user', content: message });
+    session.messages.push({ role: 'user', content: cleanMessage });
 
     const chatHistory = session.messages.slice(-20).map(m => ({ role: m.role, content: m.content }));
 
-    // Set SSE headers for streaming
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -63,19 +69,18 @@ exports.sendMessage = async (req, res) => {
 
     session.messages.push({ role: 'assistant', content: fullResponse });
 
-    // Auto-title from first message
     if (session.messages.length <= 3) {
-      session.title = message.slice(0, 60) + (message.length > 60 ? '...' : '');
+      session.title = cleanMessage.slice(0, 60) + (cleanMessage.length > 60 ? '...' : '');
     }
 
     await session.save();
-
     await User.findByIdAndUpdate(req.user._id, { $inc: { 'usage.chatMessages': 1 } });
 
     res.write(`data: ${JSON.stringify({ done: true, sessionId: session._id })}\n\n`);
     res.end();
   } catch (error) {
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    console.error('sendMessage error:', error);
+    res.write(`data: ${JSON.stringify({ error: 'Failed to send message. Please try again.' })}\n\n`);
     res.end();
   }
 };
@@ -88,6 +93,7 @@ exports.deleteSession = async (req, res) => {
     );
     res.json({ success: true, message: 'Session deleted' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('deleteSession error:', error);
+    res.status(500).json({ error: 'Failed to delete session.' });
   }
 };
