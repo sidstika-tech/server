@@ -56,15 +56,14 @@ app.use('/api/prompt-writer',   require('./routes/promptWriter.routes'));
 app.use('/api/tools',           require('./routes/tools.routes'));
 app.use('/api/community',       require('./routes/community.routes'));
 app.use('/api/academy',         require('./routes/academy.routes'));
+app.use('/api/business-dna',    require('./routes/businessDNA.routes'));
+app.use('/api/launch-package', require('./routes/launchPackage.routes'));
 
 app.get('/api/health', (req,res) => res.json({ status:'OK', service:'Double Eight AI', timestamp:new Date().toISOString() }));
 
 app.use((err,req,res,next) => {
-  console.error('Unhandled error:', err.stack);
-  const status = err.status || 500;
-  // Never expose internal error details to clients
-  const message = status < 500 ? err.message : 'Something went wrong. Please try again.';
-  res.status(status).json({ error: message });
+  console.error(err.stack);
+  res.status(err.status||500).json({ error:err.message||'Internal Server Error' });
 });
 
 if(process.env.NODE_ENV !== 'production') {
