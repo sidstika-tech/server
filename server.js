@@ -7,8 +7,6 @@ require('dotenv').config();
 
 const app = express();
 
-app.set('trust proxy', 1);
-
 const limiter = rateLimit({ windowMs:15*60*1000, max:100, message:{error:'Too many requests.'} });
 const aiLimiter = rateLimit({ windowMs:60*1000, max:20, message:{error:'AI rate limit exceeded.'} });
 
