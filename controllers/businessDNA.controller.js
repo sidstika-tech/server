@@ -40,65 +40,112 @@ exports.generateDNA = async (req, res) => {
       challenge:'Every market has its unique challenges — knowing yours gives you the advantage.'
     };
 
-    const prompt = `You are analyzing a real person who has the courage to build a business. Your job is to be the mentor they never had — honest, specific, and deeply encouraging of their potential.
+    const prompt = `You are about to make one of the most important recommendations of ${userName}'s life. They are trusting you to look at WHO they actually are — not just plug their inputs into a template — and recommend the SPECIFIC business that fits THEM in ${country} right now.
 
-ABOUT THIS PERSON:
+══════════════════════════════════════════════════════════════════
+WHO YOU ARE ANALYZING
+══════════════════════════════════════════════════════════════════
 Name: ${userName}
 Country: ${country} (${ctx.hub})
 City: ${city || ctx.hub}
-Industry they want to enter: ${industry}
-Their skills and background: ${skills}
+Industry they're drawn to: ${industry}
+Their actual skills and background: ${skills}
 Their starting budget: ${budget}
 Time they can dedicate: ${timeAvailable} per week
 Business experience: ${experience}
 Their main goal: ${goal}
 
-ABOUT THEIR MARKET (${country}):
+══════════════════════════════════════════════════════════════════
+THE MARKET (${country})
+══════════════════════════════════════════════════════════════════
 Currency: ${ctx.currency}
-Key opportunity: ${ctx.note}
-Active investors there: ${ctx.investors}
-Key challenge: ${ctx.challenge}
+Reality on the ground: ${ctx.note}
+Active investors: ${ctx.investors}
+The real challenge: ${ctx.challenge}
 
-WHAT YOU MUST DO:
-1. Use their EXACT name (${userName}) throughout — not "the entrepreneur" or "you"
-2. Reference their specific country (${country}) and city (${city || ctx.hub}) — not generic MENA
-3. Use ${ctx.currency} for all money references
-4. Base the business match on their ACTUAL skills — not just the industry they said they want
-5. Be honest about risks — a mentor who only flatters you is useless
-6. The "startingSteps" must be doable in ${country} with ${budget} — real places, real platforms, real people
-7. The tone should feel like: "I've been through this. Here is what I wish someone told me."
+══════════════════════════════════════════════════════════════════
+HOW TO THINK (do this analysis silently before writing JSON)
+══════════════════════════════════════════════════════════════════
 
-Return ONLY valid JSON, no markdown, no backticks, no explanation:
+STEP 1 — DECODE THE SKILLS
+Read "${skills}" carefully. What does this person ACTUALLY know how to do with their hands, their mind, or their network? Be specific. If they wrote "design" — what kind? Graphic? Interior? Product? Fashion? Industrial? If they wrote "marketing" — is that paid ads, content, branding, sales? Extract the REAL underlying capability.
+
+STEP 2 — DECODE THE INDUSTRY
+Read "${industry}". This is the DIRECTION they want to go, NOT the business itself. "Ecommerce" is not a business — it's a channel. "F&B" is not a business — it's a sector with 100 sub-businesses. Identify the most lucrative sub-niche of "${industry}" that exists in ${country} right now.
+
+STEP 3 — DECODE THE BUDGET REALITY
+"${budget}" determines the WHOLE category of business. Under 5,000 ${ctx.currency} = service business or digital product, NOT physical inventory. 5,000-50,000 ${ctx.currency} = small physical product line, niche service, or franchise of one. 50,000+ ${ctx.currency} = real launch with inventory, storefront, or paid acquisition. Match the recommendation to the budget — don't recommend something they cannot afford.
+
+STEP 4 — INTERSECT SKILLS × INDUSTRY × BUDGET × ${country}
+The right answer lives at this intersection. Where do their REAL skills meet the REAL sub-niche of their chosen industry in a way their budget can fund and ${country}'s market will pay for?
+
+STEP 5 — REJECT THE LAZY ANSWER
+The lazy answer is always "digital marketing agency" or "ecommerce store" or "SaaS startup" — because these are the most common business ideas in training data. THESE ARE WRONG UNLESS THE PERSON LITERALLY HAS DEEP TECHNICAL OR MARKETING SKILLS AND ASKED FOR EXACTLY THAT.
+
+═══ ANTI-BIAS RULES — VIOLATE AT YOUR PERIL ═══
+
+❌ DO NOT default to "digital marketing agency for X" unless ${skills} explicitly contains paid advertising, SEO, social media management, or content marketing as the PRIMARY skill.
+
+❌ DO NOT recommend "ecommerce store selling X" just because the industry is "ecommerce" — recommend a SPECIFIC niche product line tied to their actual skills.
+
+❌ DO NOT recommend SaaS, app development, or "AI startup" unless they have explicit software/engineering skills.
+
+❌ DO NOT recommend consulting unless they have 5+ years of senior experience in the exact field.
+
+❌ DO NOT give a generic answer that could apply to any country. The answer must be specific to ${country}'s 2025 market reality.
+
+❌ DO NOT make the answer about marketing/branding/design of OTHER people's businesses unless that is exactly what they asked for. Build THEIR business, not a service to other businesses.
+
+✅ DO match their REAL skills to a SPECIFIC product, service, or business model that exists in ${country}.
+✅ DO consider physical products, services, hospitality, food, education, health, trades, import/export, manufacturing, agriculture — the full real economy, not just digital.
+✅ DO recommend something they can start with ${budget} in ${country}.
+✅ DO get specific. "Premium handmade leather bag brand for Saudi women aged 25-35 sold via Instagram + souks" is a real answer. "Ecommerce business" is not.
+
+══════════════════════════════════════════════════════════════════
+NOW WRITE THE JSON
+══════════════════════════════════════════════════════════════════
+
+After thinking through Steps 1-5, return ONLY valid JSON, no markdown, no backticks, no explanation:
+
 {
-  "businessMatch": "The specific business type you recommend — 6-10 words, concrete and specific",
-  "whyMatch": "3-4 sentences. Use ${userName}'s name. Reference ${country} specifically. Connect their exact skills to the exact market opportunity. Make them feel this was written for them alone. Be warm but honest.",
-  "marketOpportunity": "2-3 sentences on the REAL market opportunity for this business in ${country} RIGHT NOW. Include one specific market insight that shows you know ${country}'s current economic reality.",
+  "businessMatch": "A specific business — 6-12 words. Must name the product/service AND the niche. NOT 'Digital marketing for X'. NOT 'Ecommerce store'. NOT 'Consulting'. Real example: 'Premium handcrafted oud-based perfume brand for Saudi men' or 'Industrial CNC parts manufacturing for UAE construction sector' or 'Arabic-language children's educational toys for the GCC family market'.",
+  "whyMatch": "3-4 sentences. Use ${userName}'s name. Explicitly connect 2-3 specific phrases from their skills (${skills}) to specific reasons this business wins in ${country}. The reader must finish reading and think 'no one else could have written this about me'.",
+  "marketOpportunity": "2-3 sentences on the REAL ${country} market in 2025 for this SPECIFIC business. Include one concrete number, statistic, or trend if you know one. Reference specific neighborhoods, customer segments, or buying behaviors that exist in ${country}.",
   "startingSteps": [
-    "Step 1: Specific first action in ${country} — include real platform name, real cost in ${ctx.currency}, real timeline",
-    "Step 2: Second action — equally specific",
-    "Step 3: Third action",
-    "Step 4: Fourth action",
-    "Step 5: Fifth action — should result in first paying customer or validated demand"
+    "Step 1: Specific first action in ${country} this week — name a real platform, real cost in ${ctx.currency}, real timeline. Not 'do market research'. Something like 'Spend 200 ${ctx.currency} on 20 customer interviews at [specific real location in ${city || ctx.hub}] this week'.",
+    "Step 2: Real second action with platform name and cost",
+    "Step 3: Real third action — should validate demand",
+    "Step 4: Real fourth action — first version of the offer",
+    "Step 5: Real fifth action — should result in a first paying customer or pre-order"
   ],
-  "estimatedRevenue": "Realistic Month 6 revenue range in ${ctx.currency} with one sentence explaining the assumption",
-  "riskLevel": "Low / Medium / High — followed by one honest sentence on the primary risk",
-  "score": <overall business viability score 0-100 based on: market opportunity + skills fit + budget realism + competition level>,
+  "estimatedRevenue": "Realistic Month 6 revenue range in ${ctx.currency} based on this SPECIFIC business model with this budget — show the math in one sentence (e.g., '15-25 customers/month × 400 ${ctx.currency} avg ticket')",
+  "riskLevel": "Low / Medium / High — followed by one honest sentence on the primary risk for THIS specific business in ${country}",
+  "score": <overall viability 0-100 based on: market opportunity in ${country} + how well their skills match + budget realism + competition + execution difficulty>,
   "scoreBreakdown": {
-    "marketOpportunity": <0-100, how big and accessible is this market in ${country}>,
-    "financialViability": <0-100, can this be built profitably with their budget>,
-    "competitionRisk": <0-100, higher score = less competition>,
-    "executionReadiness": <0-100, how ready are THEIR specific skills for this>,
-    "marketingStrength": <0-100, how easy is it to reach customers in ${country} for this business>,
-    "fundability": <0-100, how attractive is this to investors in ${country}>
+    "marketOpportunity": <0-100, how big and accessible is this specific market in ${country}>,
+    "financialViability": <0-100, can this be built profitably with ${budget} in ${country}>,
+    "competitionRisk": <0-100, higher score = less direct competition in ${country}>,
+    "executionReadiness": <0-100, how ready are ${userName}'s SPECIFIC skills (${skills}) for this exact business>,
+    "marketingStrength": <0-100, how easy is it to reach the target customer in ${country} with this budget>,
+    "fundability": <0-100, how attractive would this be to ${country} investors if they wanted to raise>
   },
-  "investorsToContact": "2-3 specific investor names or programs in ${country} that fund this type of business: relevant from ${ctx.investors}",
-  "biggestRisk": "The single most likely reason this specific business fails in ${country} — stated honestly but with the path to avoid it",
-  "unfairAdvantage": "What unique combination of ${userName}'s skills, location in ${country}, and timing gives them an advantage competitors cannot easily copy",
-  "firstMilestone": "The single most important thing to achieve in the first 30 days — specific and measurable"
+  "investorsToContact": "2-3 specific investor names or programs in ${country} that ACTUALLY fund this category — pick from: ${ctx.investors}. If this business is too small for formal VC, say so honestly and recommend angels/grants/family funding instead.",
+  "biggestRisk": "The single most likely reason this specific business fails in ${country} — stated honestly — followed by the specific way to avoid it.",
+  "unfairAdvantage": "The unique combination of ${userName}'s actual skills (quote 1-2 phrases from ${skills}) + their location in ${country} + the current timing in 2025 that creates an advantage competitors cannot copy.",
+  "firstMilestone": "The ONE measurable thing to achieve in the first 30 days — must be specific and measurable, e.g., '10 paying customers' or '50,000 ${ctx.currency} in pre-orders' or '500 qualified email signups'"
 }`;
 
-    const raw = await geminiChat(prompt,
-      `You are the world's most trusted business mentor for Arab entrepreneurs. You have helped hundreds of first-generation founders across ${country} and the MENA region build businesses from nothing. You are honest, specific, and deeply invested in their success. Return ONLY valid JSON.`
+    const raw = await geminiChat(
+      prompt,
+      `You are a senior business strategist who has personally advised 500+ founders across ${country} and the broader MENA region over 15 years. You have seen what works and what fails on the ground in ${country}. You despise generic answers. You despise lazy defaults like "start a digital marketing agency". You always match real skills to real market opportunities with specificity. You only recommend businesses you would personally start in this person's exact situation. Return ONLY valid JSON.`,
+      {
+        // Higher temperature pushes the model away from training-data clichés
+        // (digital marketing, generic ecommerce, SaaS) toward creative synthesis.
+        temperature: 0.9,
+        topP: 0.95,
+        // Force structured JSON — no more markdown stripping needed.
+        json: true,
+      }
     );
     const clean = raw.trim()
       .replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/i,'').trim();
