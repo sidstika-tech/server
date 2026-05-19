@@ -18,10 +18,18 @@ Your principles:
 
 When you know their country, always use their specific market, currency, regulations, local opportunities.`;
 
-async function geminiChat(prompt, systemInstruction) {
+async function geminiChat(prompt, systemInstruction, options) {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: (options && options.model) || 'gemini-2.5-flash',
     systemInstruction: systemInstruction || MASTER_IDENTITY,
+    generationConfig: {
+      // Lower temperature = less drift toward training-data clichés (digital marketing default).
+      // Higher temperature = more creative. 0.6 is a balanced sweet spot for analysis tasks.
+      temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
+      topP: (options && options.topP !== undefined) ? options.topP : 0.95,
+      // Force structured JSON output if requested — eliminates markdown wrapping issues
+      ...(options && options.json ? { responseMimeType: 'application/json' } : {}),
+    },
   });
   const result = await model.generateContent(prompt);
   return result.response.text();
