@@ -10,13 +10,26 @@ const app = express();
 const limiter = rateLimit({ windowMs:15*60*1000, max:100, message:{error:'Too many requests.'} });
 const aiLimiter = rateLimit({ windowMs:60*1000, max:20, message:{error:'AI rate limit exceeded.'} });
 
+/* ── CORS ──
+   Production: explicit allow-list. Development: permissive (any localhost / file://).
+   To allow extra production origins, set EXTRA_ORIGINS env var as a comma-separated list. */
+const PROD_ORIGINS = [
+  'http://doubleeight.online','https://doubleeight.online',
+  'http://www.doubleeight.online','https://www.doubleeight.online',
+];
+const EXTRA_ORIGINS = (process.env.EXTRA_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+
 app.use(cors({
-  origin:[
-    'http://doubleeight.online','https://doubleeight.online',
-    'http://www.doubleeight.online','https://www.doubleeight.online',
-    'http://localhost:3000','http://localhost:5500','http://127.0.0.1:5500',
-  ],
-  credentials:true
+  origin: (origin, cb) => {
+    // file:// pages send Origin: null. curl/server-to-server sends no Origin at all.
+    if (!origin || origin === 'null') return cb(null, true);
+    // Localhost / 127.0.0.1 / 0.0.0.0 on any port = dev → allow
+    if (/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(origin)) return cb(null, true);
+    // Production allow-list
+    if (PROD_ORIGINS.includes(origin) || EXTRA_ORIGINS.includes(origin)) return cb(null, true);
+    return cb(new Error('CORS blocked: ' + origin));
+  },
+  credentials: true,
 }));
 app.use(express.json({ limit:'10mb' }));
 app.use(morgan('dev'));
@@ -27,7 +40,6 @@ app.use('/api/market-research', aiLimiter);
 app.use('/api/marketing', aiLimiter);
 app.use('/api/tools', aiLimiter);
 app.use('/api/academy', aiLimiter);
-app.use('/api/business-dna', aiLimiter);
 
 let isConnected = false;
 const connectDB = async () => {
@@ -58,9 +70,21 @@ app.use('/api/tools',           require('./routes/tools.routes'));
 app.use('/api/community',       require('./routes/community.routes'));
 app.use('/api/academy',         require('./routes/academy.routes'));
 app.use('/api/business-dna',    require('./routes/businessDNA.routes'));
-app.use('/api/launch-package', require('./routes/launchPackage.routes'));
+app.use('/api/launch-package',  require('./routes/launchPackage.routes'));
+app.use('/api/notifications',   require('./routes/notification.routes'));
+app.use('/api/competitors',     require('./routes/competitor.routes'));
 
 app.get('/api/health', (req,res) => res.json({ status:'OK', service:'Double Eight AI', timestamp:new Date().toISOString() }));
+
+// JSON 404 for /api/* paths — way easier to debug than the default HTML page
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint not found',
+    method: req.method,
+    path: req.originalUrl,
+    hint: 'Check the route path. Examples: /api/auth/login, /api/generator/generate, /api/tools/generate, /api/business-dna, /api/competitors',
+  });
+});
 
 app.use((err,req,res,next) => {
   console.error(err.stack);

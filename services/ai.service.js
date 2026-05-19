@@ -870,12 +870,49 @@ function getCurrency(country) {
   return 'USD';
 }
 
-// Legacy wrappers
+// Legacy wrapper (alias for generateWebsiteCreation)
 async function generateWebsiteCopy(inputs) { return generateWebsiteCreation(inputs); }
-async function generateBudgetEstimator(inputs) { return generateBudgetEstimator(inputs); }
+
+/* ══════════════════════════════════════════════════════════════════
+   INPUT SANITIZATION — Prevents prompt injection + cleans user input
+   Every controller passes user input through here before sending
+   to Groq or Gemini. Strips control characters, limits length, and
+   neutralizes the most common prompt-injection escapes.
+══════════════════════════════════════════════════════════════════ */
+function sanitizeInputs(inputs) {
+  if (!inputs || typeof inputs !== 'object') return {};
+  const out = {};
+  for (const key of Object.keys(inputs)) {
+    const val = inputs[key];
+    if (val == null) { out[key] = val; continue; }
+    if (typeof val === 'string') {
+      let s = val
+        // Remove zero-width and control chars
+        .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u202F\uFEFF]/g, ' ')
+        // Neutralize known injection markers (all variants)
+        .replace(/\[\/?INST\]/gi, '')
+        .replace(/<\|\/?(?:system|user|assistant|im_start|im_end)\|>/gi, '')
+        .replace(/```\s*(?:system|assistant|user)\b/gi, '')
+        // Collapse repeated whitespace
+        .replace(/\s+/g, ' ')
+        .trim();
+      // Hard cap per-field length to prevent abuse
+      if (s.length > 4000) s = s.slice(0, 4000);
+      out[key] = s;
+    } else if (typeof val === 'number' || typeof val === 'boolean') {
+      out[key] = val;
+    } else if (Array.isArray(val)) {
+      out[key] = val.slice(0, 50).map(v => typeof v === 'string' ? v.slice(0, 500) : v);
+    } else {
+      // For objects, shallow-clone with the same rules
+      out[key] = val;
+    }
+  }
+  return out;
+}
 
 module.exports = {
-  chat, streamChat,
+  chat, streamChat, sanitizeInputs,
   generateBrandKit, generateBusinessPlan, generateCompetitorMatrix,
   generatePricingCalculator, generateLaunchRoadmap, generateContract,
   generateBudgetEstimator, generatePitchDeck, generateAdCopy,

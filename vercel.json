@@ -6,15 +6,16 @@
       "use": "@vercel/node"
     }
   ],
-  "functions": {
-    "server.js": {
-      "maxDuration": 60
-    }
-  },
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/api/(.*)",
       "dest": "/server.js"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/competitors/cron/weekly-digest",
+      "schedule": "0 9 * * 1"
     }
   ]
 }
