@@ -197,24 +197,27 @@ exports.getDaily = async (req, res) => {
     res.json({ success: true, data, cached: false });
   } catch (err) {
     console.error('Academy daily error:', err.message);
-    // Fallback so page never breaks
+    // Fallback so page never breaks — keeps the MENA-only promise even when Gemini fails
     res.json({
       success: true,
       cached: false,
       data: {
         cards: [
-          { id: 'card1', type: 'market', icon: '📈', country: 'USA', countryFlag: '🇺🇸', category: 'Markets',
-            title: 'Markets remain volatile — focus on what you control', summary: 'Macro noise dominates this week. Founders who execute beat founders who react.',
-            opportunity: 'Spend less time on news, more time on customer conversations.',
-            source: 'Double Eight AI', sourceUrl: 'https://www.bloomberg.com/markets' },
-          { id: 'card2', type: 'success', icon: '🏆', country: 'UAE', countryFlag: '🇦🇪', category: 'Success Story',
-            title: 'A founder who started with AED 5,000 now leads their category', summary: 'The pattern: relentless customer obsession, not capital.',
-            opportunity: 'Identify the single customer behaviour you will obsess over this month.',
+          { id: 'card1', type: 'market', icon: '📈', country: 'Saudi Arabia', countryFlag: '🇸🇦', category: 'MENA Markets',
+            title: 'Tadawul holds steady as Vision 2030 capex keeps flowing',
+            summary: 'Saudi giga-project spending continues feeding non-oil sectors. SMEs aligned to Vision 2030 priorities are winning faster contracts than ever.',
+            opportunity: 'Map one Vision 2030 pillar to your offering this week — tourism, sport, entertainment, logistics, health, or housing.',
+            source: 'Argaam', sourceUrl: 'https://www.argaam.com' },
+          { id: 'card2', type: 'success', icon: '🏆', country: 'UAE', countryFlag: '🇦🇪', category: 'MENA Founder Story',
+            title: 'Tabby reshaped MENA fintech by obsessing over one customer pain',
+            summary: 'Tabby built a billion-dollar BNPL business by solving instalment friction for Gulf shoppers. The pattern: pick one painful moment and rebuild it.',
+            opportunity: 'Identify the single most painful moment your customer experiences and rebuild only that — nothing else.',
             source: 'Forbes Middle East', sourceUrl: 'https://www.forbesmiddleeast.com' },
-          { id: 'card3', type: 'opportunity', icon: '🚀', country: 'Saudi Arabia', countryFlag: '🇸🇦', category: 'Opportunity',
-            title: 'Vision 2030 budgets keep shifting — small players are winning', summary: 'Niche service providers landing government adjacent contracts faster than ever.',
-            opportunity: 'Map one government priority to your existing skill set this week.',
-            source: 'Arab News', sourceUrl: 'https://www.arabnews.com' },
+          { id: 'card3', type: 'opportunity', icon: '🚀', country: 'Egypt', countryFlag: '🇪🇬', category: 'MENA Opportunity',
+            title: 'Egyptian e-commerce sellers winning as imported goods slow down',
+            summary: 'Currency pressure on Egyptian imports is creating space for local makers. Niche locally-produced lines are taking market share that imports used to own.',
+            opportunity: 'If you have any local production angle, list one SKU on Jumia or Instagram this week with "صناعة محلية" (locally made) as the headline.',
+            source: 'MENAbytes', sourceUrl: 'https://www.menabytes.com' },
         ],
         generatedAt: today,
       }
