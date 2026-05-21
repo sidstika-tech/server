@@ -4,6 +4,9 @@ const { geminiChat, MASTER_IDENTITY } = require('./gemini.service');
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
+const { openrouterChat } = require('./gemini.service');
+
+// Use any model available on OpenRouter:
 /* ══════════════════════════════════════════════════════════════════
    GROQ — AI ADVISOR CHAT (streaming, instant)
    System prompt built for MENA entrepreneur psychology
@@ -781,7 +784,7 @@ function applyFallbackEdits(template, inputs) {
   // Replace bracketed placeholders like {{BRAND_NAME}} or [BRAND_NAME] if present
   html = html
     .replace(/\{\{\s*BRAND_NAME\s*\}\}/g, name)
-    .replace(/\{\{\s*PROJECT_NAME\s*\}\}/g, name)
+    .replace(/\{\{\s*BUSINESS_NAME\s*\}\}/g, name)
     .replace(/\{\{\s*COMPANY_NAME\s*\}\}/g, name)
     .replace(/\[BRAND_NAME\]/g, name)
     .replace(/\[BUSINESS_NAME\]/g, name);
@@ -848,7 +851,7 @@ ${template}
 End your output with </html>. Nothing else after.`;
 
   try {
-    const raw = await geminiChat(
+    const raw = await openrouterChat(
       editPrompt,
       `You are an expert web developer who edits HTML templates to match specific brands. You output ONLY clean HTML — no markdown, no chatter. Preserve structure, edit content.`,
       { temperature: 0.5, topP: 0.95, language: inputs.language }
@@ -883,7 +886,7 @@ End your output with </html>. Nothing else after.`;
 
 // ── SALES SCRIPT ──────────────────────────────────────────────────────────
 async function generateSalesScript(inputs) {
-  return geminiChat(
+  return openrouterChat(
 `${psychProfileBlock(inputs)}
 Create a complete sales script for:
 
