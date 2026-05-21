@@ -1,6 +1,5 @@
 const Groq = require('groq-sdk');
 const { geminiChat, MASTER_IDENTITY } = require('./gemini.service');
-const OpenAI = require('openai');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
@@ -849,7 +848,7 @@ ${template}
 End your output with </html>. Nothing else after.`;
 
   try {
-    const raw = await openaiChat(
+    const raw = await geminiChat(
       editPrompt,
       `You are an expert web developer who edits HTML templates to match specific brands. You output ONLY clean HTML — no markdown, no chatter. Preserve structure, edit content.`,
       { temperature: 0.5, topP: 0.95, language: inputs.language }
