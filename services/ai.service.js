@@ -1190,7 +1190,13 @@ function sanitizeInputs(inputs) {
   }
   return out;
 }
+async function chat(messages, systemInstruction, options = {}) {
+  return openaiChat(messages, systemInstruction, options);
+}
 
+async function streamChat(messages, systemInstruction, options = {}) {
+  return openaiChat(messages, systemInstruction, options);
+}
 module.exports = {
   chat, streamChat, sanitizeInputs,
   generateBrandKit, generateBusinessPlan, generateCompetitorMatrix,
