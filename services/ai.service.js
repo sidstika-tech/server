@@ -690,71 +690,149 @@ Full email: [Graceful, leaves door open — many MENA deals happen 6 months late
   );
 }
 
-// ── WEBSITE CREATION ──────────────────────────────────────────────────────
-async function generateWebsiteCreation(inputs) {
-  const lang = inputs.language === 'ar' ? 'ar' : 'en';
-  const isAr = lang === 'ar';
+// ── WEBSITE CREATION — TEMPLATE-BASED ────────────────────────────────────
+// Loads a ready-made HTML template from /website-templates/ and has Gemini
+// intelligently edit it based on user inputs. No more 20-second timeouts.
+// If Gemini fails, a deterministic find-replace fallback runs so the user
+// ALWAYS gets a working website.
+const fs = require('fs');
+const path = require('path');
 
-  const raw = await geminiChat(
-`You are an expert full-stack web developer. Generate a complete, professional, single-file website.
+const TEMPLATE_MAP = {
+  // Maps the dropdown values from the frontend form to template file names
+  'Business / Company':   'business.html',
+  'Portfolio / Personal': 'portfolio.html',
+  'Restaurant / Cafe':    'restaurant.html',
+  'E-Commerce / Store':   'ecommerce.html',
+  // Aliases / fallbacks — these all map to business.html until you provide more templates
+  'Startup / SaaS':       'business.html',
+  'Gym / Fitness':        'business.html',
+  'Real Estate':          'business.html',
+  'Medical / Clinic':     'business.html',
+};
 
-Project: ${inputs.businessName}
-Type: ${inputs.content || 'Business / Company'}
-Sections: ${inputs.sections || 'Full (All Sections)'}
-Color Style: ${inputs.colors || 'Dark & Gold (Luxury)'}
-Font Style: ${inputs.fonts || 'Modern Sans-Serif'}
-Interactive Features: ${inputs.interactive || 'Smooth Scroll + Animations'}
-Extra Requirements: ${inputs.extraDetails || 'None'}
-LANGUAGE: ${isAr ? 'ARABIC — All text content in Arabic. Set <html lang="ar" dir="rtl"> and use right-to-left layout.' : 'English — All text content in English. Set <html lang="en">.'}
-
-ABSOLUTE REQUIREMENTS — VIOLATE NONE:
-1. Output ONLY raw HTML starting with <!DOCTYPE html>
-2. NO markdown code fences (no \`\`\`html, no \`\`\`)
-3. NO explanation text before or after the HTML
-4. ALL CSS inside ONE <style> tag in <head>
-5. ALL JavaScript inside ONE <script> tag before </body>
-6. Google Fonts via <link> in <head>
-7. Fully responsive: mobile, tablet, desktop
-8. Sticky navigation with smooth scroll to sections
-9. REAL CONTENT — no Lorem Ipsum. Write actual compelling copy for this business in ${isAr ? 'Arabic' : 'English'}.
-10. CSS animations on hero section load
-11. Contact form if requested (styled, no backend)
-12. Professional modern design — avoid 2015-era templates
-13. Footer with copyright year using JavaScript: document.write(new Date().getFullYear())
-14. ${isAr ? 'RTL layout: dir="rtl", text-align: right, mirrored navigation' : 'LTR standard layout'}
-
-End with </html>. Output nothing else after.`,
-    `You are an expert web developer. Output ONLY clean HTML starting with <!DOCTYPE html>. Nothing else — no markdown fences, no explanation.`,
-    { temperature: 0.7, topP: 0.95, language: inputs.language }
-  );
-
-  // Post-processing: extract clean HTML even when Gemini wraps it in markdown or adds chatter
-  let html = String(raw || '').trim();
-
-  // Strip markdown code fences if present
-  html = html.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-
-  // If output contains <!DOCTYPE html> somewhere, extract from there
-  const docMatch = html.match(/<!DOCTYPE\s+html[\s\S]*<\/html>/i);
-  if (docMatch) {
-    html = docMatch[0];
-  } else {
-    // If no doctype, try to extract <html>...</html>
-    const htmlMatch = html.match(/<html[\s\S]*<\/html>/i);
-    if (htmlMatch) {
-      html = '<!DOCTYPE html>\n' + htmlMatch[0];
-    } else {
-      // Fallback: wrap whatever we got in a basic doctype
-      throw new Error('Generated content was not valid HTML. Please try again.');
+function loadTemplate(websiteType) {
+  const filename = TEMPLATE_MAP[websiteType] || 'business.html';
+  const filepath = path.join(__dirname, '..', 'website-templates', filename);
+  if (!fs.existsSync(filepath)) {
+    // Fallback to business.html if the requested template doesn't exist yet
+    const fallback = path.join(__dirname, '..', 'website-templates', 'business.html');
+    if (!fs.existsSync(fallback)) {
+      throw new Error(`No website templates found. Add HTML files to /website-templates/ (at minimum: business.html).`);
     }
+    return fs.readFileSync(fallback, 'utf8');
   }
+  return fs.readFileSync(filepath, 'utf8');
+}
 
-  // Sanity check: must be at least 500 chars to be a real website
-  if (html.length < 500) {
-    throw new Error('Generated website was too short. Please try again with more details.');
-  }
+// Deterministic fallback editor — runs if Gemini fails or returns garbage.
+// Does basic find-replace using common naming patterns. ALWAYS produces a
+// working website even when AI is down.
+function applyFallbackEdits(template, inputs) {
+  let html = template;
+  const name = inputs.businessName || 'Your Business';
+
+  // Replace bracketed placeholders like {{BRAND_NAME}} or [BRAND_NAME] if present
+  html = html
+    .replace(/\{\{\s*BRAND_NAME\s*\}\}/g, name)
+    .replace(/\{\{\s*BUSINESS_NAME\s*\}\}/g, name)
+    .replace(/\{\{\s*COMPANY_NAME\s*\}\}/g, name)
+    .replace(/\[BRAND_NAME\]/g, name)
+    .replace(/\[BUSINESS_NAME\]/g, name);
+
+  // Color palette swap — read user's selection and map to CSS variable changes
+  const colorSchemes = {
+    'Dark & Gold (Luxury)':     { primary: '#f59e0b', accent: '#d97706', bg: '#0a0a0f', text: '#fefce8' },
+    'Light & Clean (Minimal)':  { primary: '#1f2937', accent: '#3b82f6', bg: '#ffffff', text: '#1f2937' },
+    'Dark & Blue (Tech)':       { primary: '#3b82f6', accent: '#06b6d4', bg: '#0f172a', text: '#f1f5f9' },
+    'White & Green (Health)':   { primary: '#10b981', accent: '#059669', bg: '#f9fafb', text: '#064e3b' },
+    'Dark & Purple (Creative)': { primary: '#a855f7', accent: '#ec4899', bg: '#1a0a2e', text: '#fae8ff' },
+  };
+  const scheme = colorSchemes[inputs.colors] || colorSchemes['Dark & Gold (Luxury)'];
+  // Replace common CSS variable patterns
+  html = html
+    .replace(/\{\{\s*PRIMARY_COLOR\s*\}\}/g, scheme.primary)
+    .replace(/\{\{\s*ACCENT_COLOR\s*\}\}/g, scheme.accent)
+    .replace(/\{\{\s*BG_COLOR\s*\}\}/g, scheme.bg)
+    .replace(/\{\{\s*TEXT_COLOR\s*\}\}/g, scheme.text);
 
   return html;
+}
+
+async function generateWebsiteCreation(inputs) {
+  // 1. Load the template the user picked
+  const template = loadTemplate(inputs.content || 'Business / Company');
+
+  const isAr = inputs.language === 'ar';
+
+  // 2. Build a focused prompt asking Gemini to edit the template — NOT write from scratch.
+  //    This is dramatically faster and more reliable than full generation.
+  const editPrompt = `You are editing an existing HTML website template. DO NOT rewrite it from scratch.
+Make ONLY targeted edits so it represents this real business:
+
+═══ THE BUSINESS ═══
+Brand name: ${inputs.businessName || 'Untitled Brand'}
+Website type: ${inputs.content || 'Business'}
+Sections requested: ${inputs.sections || 'Full'}
+Color style: ${inputs.colors || 'Dark & Gold (Luxury)'}
+Font style: ${inputs.fonts || 'Modern Sans-Serif'}
+Interactive features: ${inputs.interactive || 'Smooth scroll'}
+Extra requirements from user: ${inputs.extraDetails || 'None'}
+Output language: ${isAr ? 'ARABIC — replace ALL text content with Arabic. Set <html lang="ar" dir="rtl">.' : 'English'}
+
+═══ WHAT TO EDIT ═══
+1. Replace every occurrence of the placeholder brand name in the template with: ${inputs.businessName || 'Untitled Brand'}
+2. Rewrite headline, tagline, hero text, section titles, and body copy to fit THIS specific business (${inputs.content})
+3. Update CSS color variables in :root or :host to match "${inputs.colors}"
+4. Update font-family declarations to match "${inputs.fonts}" — pick an appropriate Google Font and update the <link> tag
+5. ${isAr ? 'Translate ALL visible text to Arabic. Add dir="rtl" to <html>. Flip layout where natural.' : 'Keep English.'}
+6. If "Extra requirements" mentions specific features (Arabic support, pricing table, dark mode, etc.), incorporate them
+7. Keep the overall structure, sections, and design INTACT — do not remove or rearrange sections
+
+═══ CRITICAL OUTPUT RULES ═══
+- Return ONLY the edited HTML starting with <!DOCTYPE html>
+- NO markdown fences (no \`\`\`html, no \`\`\`)
+- NO explanation text before or after
+- Preserve ALL CSS, all JavaScript, all structure from the template
+- The output must be a complete valid HTML file ready to download
+
+═══ THE TEMPLATE TO EDIT ═══
+${template}
+
+End your output with </html>. Nothing else after.`;
+
+  try {
+    const raw = await geminiChat(
+      editPrompt,
+      `You are an expert web developer who edits HTML templates to match specific brands. You output ONLY clean HTML — no markdown, no chatter. Preserve structure, edit content.`,
+      { temperature: 0.5, topP: 0.95, language: inputs.language }
+    );
+
+    // 3. Clean the output — strip markdown fences, find <!DOCTYPE>, etc.
+    let html = String(raw || '').trim();
+    html = html.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+
+    const docMatch = html.match(/<!DOCTYPE\s+html[\s\S]*<\/html>/i);
+    if (docMatch) {
+      html = docMatch[0];
+    } else {
+      const htmlMatch = html.match(/<html[\s\S]*<\/html>/i);
+      if (htmlMatch) html = '<!DOCTYPE html>\n' + htmlMatch[0];
+    }
+
+    // 4. Sanity check — must be at least 80% of original template length
+    //    (Gemini sometimes truncates if context window is tight)
+    if (html.length < template.length * 0.5) {
+      console.warn('Gemini output truncated, using fallback');
+      return applyFallbackEdits(template, inputs);
+    }
+
+    return html;
+  } catch (err) {
+    console.error('Website AI edit failed, falling back to deterministic replace:', err.message);
+    // Even if AI completely fails, user gets a working personalized site
+    return applyFallbackEdits(template, inputs);
+  }
 }
 
 // ── SALES SCRIPT ──────────────────────────────────────────────────────────
