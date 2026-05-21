@@ -253,7 +253,7 @@ async function openaiChat(prompt, systemInstruction, options) {
     ];
 
     const params = {
-      model: (options && options.model) || 'gpt-4o-mini',
+      model: (options && options.model) || 'gpt-5.4-mini',
       messages,
       temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
       top_p: (options && options.topP !== undefined) ? options.topP : 0.95,
