@@ -7,6 +7,13 @@ require('dotenv').config();
 
 const app = express();
 
+/* ── TRUST PROXY ──
+   Vercel and most serverless/CDN platforms forward the real client IP
+   via the X-Forwarded-For header. Without this, Express returns the
+   proxy's IP for every request and express-rate-limit throws a
+   validation error. Setting to 1 trusts the first proxy hop. */
+app.set('trust proxy', 1);
+
 const limiter = rateLimit({ windowMs:15*60*1000, max:100, message:{error:'Too many requests.'} });
 const aiLimiter = rateLimit({ windowMs:60*1000, max:20, message:{error:'AI rate limit exceeded.'} });
 
