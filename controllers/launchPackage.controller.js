@@ -4,8 +4,30 @@ const User = require('../models/user.model');
 const aiService = require('../services/ai.service');
 const exportService = require('../services/export.service');
 
-// The 8 documents in the Launch Package — in psychological order
+// The 8 documents in the Launch Package — each shaped by the user's psychology
 // Order matters: validate first, then build, then market, then fund
+//
+// Every generator receives the FULL psychological profile so documents feel
+// coherent — written for THIS person, not a generic founder.
+function profileContext(dna) {
+  const p = dna.profile || {};
+  const path = dna.path || {};
+  return {
+    psychWhoYouAre:   p.whoYouAre || '',
+    psychStrength:    p.realStrength || '',
+    psychWorkStyle:   p.workStyle || '',
+    psychEnergy:      p.energyType || '',
+    psychMotivation:  p.motivationFuel || '',
+    psychRiskDNA:     p.riskDNA || '',
+    psychAvoid:       p.avoidAtAllCost || '',
+    pathName:         path.name || dna.matchResult?.businessMatch || '',
+    pathWhy:          path.whyThisPath || '',
+    pathUnfair:       path.unfairAdvantage || '',
+    pathMarketFit:    path.marketFit || '',
+    pathRealCost:     path.realCost || '',
+  };
+}
+
 const PACKAGE_ITEMS = [
   {
     id: 'market_research',
@@ -13,115 +35,123 @@ const PACKAGE_ITEMS = [
     icon: '◉',
     tagline: 'Know your battlefield before you enter',
     generate: (dna, lang) => aiService.generateMarketResearch({
-      niche: dna.industry,
+      niche: dna.path?.name || dna.matchResult?.businessMatch || '',
       region: dna.country,
-      product: dna.matchResult?.businessMatch,
-      budget: dna.budget,
+      product: dna.path?.name || dna.matchResult?.businessMatch,
+      budget: dna.answers?.budget || '',
       language: lang,
+      ...profileContext(dna),
     })
   },
   {
     id: 'business_plan',
     label: 'Business Plan',
     icon: '📋',
-    tagline: 'Your complete roadmap — investor ready',
+    tagline: 'Your complete roadmap — built around YOUR psychology',
     generate: (dna, lang) => aiService.generateBusinessPlan({
-      businessName: dna.matchResult?.businessMatch || dna.industry,
-      industry: dna.industry,
-      businessModel: 'As recommended by Business DNA analysis',
-      targetMarket: `${dna.country} — ${dna.matchResult?.marketOpportunity?.slice(0,100) || 'MENA market'}`,
+      businessName: dna.path?.name || dna.matchResult?.businessMatch || '',
+      industry: dna.path?.name || '',
+      businessModel: 'Designed around the founder\'s psychology: ' + (dna.profile?.workStyle || ''),
+      targetMarket: `${dna.country} — ${dna.path?.marketFit?.slice(0,120) || 'MENA market'}`,
       location: `${dna.city || ''} ${dna.country}`.trim(),
-      investment: dna.budget,
-      goals: dna.goal,
+      investment: dna.answers?.budget || '',
+      goals: dna.answers?.successLooksLike || '',
       language: lang,
+      ...profileContext(dna),
     })
   },
   {
     id: 'brand_kit',
     label: 'Brand Identity Kit',
     icon: '🎨',
-    tagline: 'The face of your business — built to be remembered',
+    tagline: 'A brand that sounds like you — not like everyone else',
     generate: (dna, lang) => aiService.generateBrandKit({
-      businessName: dna.matchResult?.businessMatch || dna.industry,
-      industry: dna.industry,
-      values: 'Trust, Excellence, Innovation',
-      targetAudience: `${dna.country} market — ${dna.industry} customers`,
-      style: 'Modern, Professional, Trustworthy',
+      businessName: dna.path?.name || dna.matchResult?.businessMatch || '',
+      industry: dna.path?.name || '',
+      values: dna.profile?.motivationFuel || 'Trust, Excellence, Innovation',
+      targetAudience: `${dna.country} — buyers of: ${dna.path?.name || ''}`,
+      style: dna.profile?.workStyle || 'Modern, Professional, Trustworthy',
       language: lang,
+      ...profileContext(dna),
     })
   },
   {
     id: 'competitor_matrix',
     label: 'Competitor Analysis',
     icon: '⚔',
-    tagline: 'Know your enemies better than they know themselves',
+    tagline: 'Know your enemies — and where they cannot follow you',
     generate: (dna, lang) => aiService.generateCompetitorMatrix({
-      businessName: dna.matchResult?.businessMatch || dna.industry,
-      industry: dna.industry,
+      businessName: dna.path?.name || dna.matchResult?.businessMatch || '',
+      industry: dna.path?.name || '',
       region: dna.country,
-      uniqueAngle: dna.matchResult?.unfairAdvantage || dna.skills,
+      uniqueAngle: dna.path?.unfairAdvantage || dna.profile?.realStrength || '',
       language: lang,
+      ...profileContext(dna),
     })
   },
   {
     id: 'pricing_calculator',
     label: 'Pricing Strategy',
     icon: '💰',
-    tagline: 'Price too low and you die slowly. Price right and you win.',
+    tagline: 'Price like the position you want — not the one you have',
     generate: (dna, lang) => aiService.generatePricingCalculator({
-      businessName: dna.matchResult?.businessMatch || dna.industry,
-      product: dna.industry,
-      industry: dna.industry,
-      monthlyCosts: 'Based on budget: ' + dna.budget,
+      businessName: dna.path?.name || dna.matchResult?.businessMatch || '',
+      product: dna.path?.name || '',
+      industry: dna.path?.name || '',
+      monthlyCosts: 'Based on budget: ' + (dna.answers?.budget || ''),
       targetMargin: '40-60%',
       competitorPricing: `Market rate in ${dna.country}`,
       language: lang,
+      ...profileContext(dna),
     })
   },
   {
     id: 'marketing_strategy',
     label: 'Marketing Strategy',
     icon: '◈',
-    tagline: 'Your complete plan to get and keep customers',
+    tagline: 'Acquire customers the way YOU naturally would',
     generate: (dna, lang) => aiService.generateMarketingStrategy({
-      businessName: dna.matchResult?.businessMatch || dna.industry,
-      industry: dna.industry,
-      targetAudience: `${dna.country} ${dna.industry} customers`,
-      goals: dna.goal,
-      budget: dna.budget,
+      businessName: dna.path?.name || dna.matchResult?.businessMatch || '',
+      industry: dna.path?.name || '',
+      targetAudience: `${dna.country} — buyers for: ${dna.path?.name || ''}`,
+      goals: dna.answers?.successLooksLike || '',
+      budget: dna.answers?.budget || '',
       currentPresence: 'Starting fresh',
       timeline: '6 months',
       language: lang,
+      ...profileContext(dna),
     })
   },
   {
     id: 'launch_roadmap',
     label: '30-Day Launch Roadmap',
     icon: '🚀',
-    tagline: 'Day by day. No guessing. Just execute.',
+    tagline: 'Day by day — paced for your work style',
     generate: (dna, lang) => aiService.generateLaunchRoadmap({
-      businessName: dna.matchResult?.businessMatch || dna.industry,
-      industry: dna.industry,
-      budget: dna.budget,
+      businessName: dna.path?.name || dna.matchResult?.businessMatch || '',
+      industry: dna.path?.name || '',
+      budget: dna.answers?.budget || '',
       teamSize: 'Solo founder or small team',
       currentStatus: 'Pre-launch — DNA analysis complete',
-      goal: dna.goal,
+      goal: dna.answers?.successLooksLike || '',
       language: lang,
+      ...profileContext(dna),
     })
   },
   {
     id: 'budget_estimator',
     label: '6-Month Financial Model',
     icon: '💵',
-    tagline: 'Your numbers. Your runway. Your survival plan.',
+    tagline: 'Your numbers, your runway, your honest plan',
     generate: (dna, lang) => aiService.generateBudgetEstimator({
-      businessType: dna.matchResult?.businessMatch || dna.industry,
-      industry: dna.industry,
+      businessType: dna.path?.name || dna.matchResult?.businessMatch || '',
+      industry: dna.path?.name || '',
       location: `${dna.city || ''} ${dna.country}`.trim(),
       teamSize: 'Founder + 1-2',
-      revenueModel: 'To be defined based on business match',
-      targetRevenue: dna.matchResult?.estimatedRevenue || 'First profitable month',
+      revenueModel: 'To be defined based on path: ' + (dna.path?.pathType || 'business'),
+      targetRevenue: dna.realisticRevenue || 'First profitable month',
       language: lang,
+      ...profileContext(dna),
     })
   },
 ];
