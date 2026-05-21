@@ -4,7 +4,7 @@ const { geminiChat, MASTER_IDENTITY } = require('./gemini.service');
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
-const { openrouterChat } = require('./gemini.service');
+const { openaiChat } = require('./gemini.service');
 
 // Use any model available on OpenRouter:
 /* ══════════════════════════════════════════════════════════════════
@@ -114,14 +114,14 @@ async function chat(messages, systemPrompt, language) {
   if (language === 'ar') {
     sysMsg += `\n\nCRITICAL: The user is in Arabic mode. Respond ENTIRELY in Modern Standard Arabic (الفصحى). Keep brand names, country codes, and URLs in their original language. Never respond in English.`;
   }
-  const response = await groq.chat.completions.create({
-    model: MODEL,
-    messages: [{ role:'system', content:sysMsg }, ...messages],
-    temperature: 0.7,
-    max_tokens: 4096,
-    stream: false
-  });
-  return response.choices[0]?.message?.content || '';
+const response = await openaiChat({
+  model: MODEL,
+  messages: [{ role:'system', content:sysMsg }, ...messages],
+  temperature: 0.7,
+  max_completion_tokens: 4096
+});
+
+return response;
 }
 
 async function streamChat(messages, type, onChunk, language) {
@@ -129,12 +129,11 @@ async function streamChat(messages, type, onChunk, language) {
   if (language === 'ar') {
     sysMsg += `\n\nCRITICAL: The user is in Arabic mode. Respond ENTIRELY in Modern Standard Arabic (الفصحى). Keep brand names, country codes, and URLs in their original language. Never respond in English.`;
   }
-  const stream = await groq.chat.completions.create({
-    model: MODEL,
-    messages: [{ role:'system', content:sysMsg }, ...messages],
-    temperature: 0.7,
-    max_tokens: 4096,
-    stream: true
+  const response = await openaiChat({
+  model: MODEL,
+  messages: [{ role:'system', content:sysMsg }, ...messages],
+  temperature: 0.7,
+  max_completion_tokens: 4096
   });
   let full = '';
   for await (const chunk of stream) {
