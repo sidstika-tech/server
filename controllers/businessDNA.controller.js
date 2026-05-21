@@ -3,26 +3,37 @@ const { openrouterChat } = require('../services/gemini.service');
 
 /* ══════════════════════════════════════════════════════════════════
    BUSINESS DNA — PSYCHOLOGICAL ARCHITECT & TALENT HUNTER
-   This is NOT a business strategist. This is a psychologist who:
-   - Reads who the user is between the lines of their 8 answers
-   - Finds hidden strengths they don't see in themselves
-   - Detects work style + motivation fuel + risk DNA
-   - Designs the Road of Least Resistance — psychology first, market second
-   - Builds a 30-day failure-proof map shaped by THEIR personality
+
+   This is NOT a business idea generator.
+   This is NOT a country-market matcher.
+   This is a psychologist who:
+
+   ✦ Reads WHO the user is between the lines of their 9 answers
+   ✦ Finds hidden strengths they don't see in themselves
+   ✦ Detects work style + motivation fuel + risk DNA
+   ✦ Designs the Road of Least Resistance — psychology FIRST, market SECOND
+   ✦ Builds a 30-day failure-proof map shaped by THEIR personality
+
+   CRITICAL RULES:
+   — The model does NOT recommend a business because of the user's country.
+   — Country is used ONLY for currency and local platform references.
+   — The path comes from PSYCHOLOGY. Geography is context, not driver.
+   — The model does NOT choose a business for the user. It reads the user
+     and reveals the path that already exists in their answers.
+   — No flattery. No generic advice. No Silicon Valley templates.
 ══════════════════════════════════════════════════════════════════ */
 
-// Light country context — for market grounding only, NOT the main driver
 const COUNTRY_CONTEXT = {
-  'Saudi Arabia':{ currency:'SAR', hub:'Riyadh' },
-  'UAE':         { currency:'AED', hub:'Dubai' },
-  'Egypt':       { currency:'EGP', hub:'Cairo' },
-  'Qatar':       { currency:'QAR', hub:'Doha' },
-  'Kuwait':      { currency:'KWD', hub:'Kuwait City' },
-  'Bahrain':     { currency:'BHD', hub:'Manama' },
-  'Oman':        { currency:'OMR', hub:'Muscat' },
-  'Jordan':      { currency:'JOD', hub:'Amman' },
-  'Morocco':     { currency:'MAD', hub:'Casablanca' },
-  'Lebanon':     { currency:'LBP', hub:'Beirut' },
+  'Saudi Arabia': { currency: 'SAR', hub: 'Riyadh' },
+  'UAE':          { currency: 'AED', hub: 'Dubai' },
+  'Egypt':        { currency: 'EGP', hub: 'Cairo' },
+  'Qatar':        { currency: 'QAR', hub: 'Doha' },
+  'Kuwait':       { currency: 'KWD', hub: 'Kuwait City' },
+  'Bahrain':      { currency: 'BHD', hub: 'Manama' },
+  'Oman':         { currency: 'OMR', hub: 'Muscat' },
+  'Jordan':       { currency: 'JOD', hub: 'Amman' },
+  'Morocco':      { currency: 'MAD', hub: 'Casablanca' },
+  'Lebanon':      { currency: 'LBP', hub: 'Beirut' },
 };
 
 function ctxFor(country) {
@@ -49,8 +60,7 @@ exports.generateDNA = async (req, res) => {
     const language = body.language === 'ar' ? 'ar' : 'en';
     const a = body.answers || {};
 
-    // Validate the 8 answers — all required, all must be at least 5 chars
-    const required = ['proudOf','energySource','couldDoBetter','peopleAskFor','whatYouHate','whatStopsYou','successLooksLike','naturalMedium','budget'];
+    const required = ['proudOf', 'energySource', 'couldDoBetter', 'peopleAskFor', 'whatYouHate', 'whatStopsYou', 'successLooksLike', 'naturalMedium', 'budget'];
     for (const k of required) {
       if (!a[k] || String(a[k]).trim().length < 3) {
         return res.status(400).json({ error: `Please answer all 9 questions. Missing or too short: ${k}` });
@@ -58,18 +68,17 @@ exports.generateDNA = async (req, res) => {
     }
 
     const ctx = ctxFor(country);
-
     const prompt = buildArchitectPrompt({ userName, country, city, ctx, answers: a });
 
     const raw = await openrouterChat(
       prompt,
-      `You are a Psychological Architect & Talent Hunter. You read humans between the lines. You don't match resumes to industries — you match psychology + behavior patterns + hidden strengths to a life path. You see the user more clearly than they see themselves. You write like a wise older sibling who has watched them quietly and finally tells them what you've seen. You only output valid JSON.`,
+      `You are a Psychological Architect & Talent Hunter. Your job is NOT to suggest business ideas based on where someone lives. Your job is to read who they are. You detect patterns in how people describe their proudest moments, what drains them, what people ask from them, what they imagine their future looks like. From these signals, you reveal the path that is already embedded in their psychology. You write like a wise older sibling who has watched them quietly and finally speaks the truth. You never flatter. You never give generic answers. You output valid JSON only.`,
       {
         temperature: 0.9,
         topP: 0.95,
         json: true,
         language,
-        model: 'deepseek/deepseek-chat',
+        model: 'anthropic/claude-3-5-haiku',
       }
     );
 
@@ -83,7 +92,6 @@ exports.generateDNA = async (req, res) => {
       return res.status(500).json({ error: 'Could not parse psychological profile. Please try again.' });
     }
 
-    // ── Save full DNA ──
     const dnaDoc = {
       user: req.user._id,
       name: userName,
@@ -134,7 +142,6 @@ exports.generateDNA = async (req, res) => {
       },
       firstMilestone:   str(parsed?.firstMilestone),
       realisticRevenue: str(parsed?.realisticRevenue),
-      // ── Mirror to matchResult for backward compat with Launch Package ──
       matchResult: {
         businessMatch:     str(parsed?.path?.name),
         whyMatch:          str(parsed?.path?.whyThisPath),
@@ -170,17 +177,12 @@ exports.resetDNA = async (req, res) => {
   }
 };
 
-/* ── PUT /api/business-dna/stage ───────────────────────────────
-   Updates the user's journeyStage as they progress through the
-   Launch Package (validated → branded → marketing → launched).
-   Used by the Launch Package controller and the frontend. */
+/* ── PUT /api/business-dna/stage ───────────────────────────────── */
 exports.updateStage = async (req, res) => {
   try {
-    const validStages = ['pending','generated','validated','branded','marketing','launched'];
+    const validStages = ['pending', 'generated', 'validated', 'branded', 'marketing', 'launched'];
     const { stage } = req.body || {};
-    if (!validStages.includes(stage)) {
-      return res.status(400).json({ error: 'Invalid stage' });
-    }
+    if (!validStages.includes(stage)) return res.status(400).json({ error: 'Invalid stage' });
     const dna = await BusinessDNA.findOneAndUpdate(
       { user: req.user._id },
       { journeyStage: stage },
@@ -208,165 +210,225 @@ function normalizeWeek(w) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   THE PROMPT — designed to make the model think like a psychologist
+   THE PROMPT — The Psychological Architect
+
+   DESIGN PHILOSOPHY:
+   The model must read the USER, not scan the country.
+   The path emerges from psychology patterns in 9 answers.
+   Country is used ONLY for currency + platform context.
+   The model reveals what's already in the person.
 ══════════════════════════════════════════════════════════════════ */
 function buildArchitectPrompt({ userName, country, city, ctx, answers }) {
-  return `You are about to do something most AI tools can't: actually SEE a person from the words they wrote.
+  return `You are about to do something most AI systems cannot: actually SEE a person from the words they wrote.
 
-A real human has answered 9 questions. They are trusting you to look beyond what they typed and tell them who they really are — what their psychology reveals, what hidden strengths they have, and the one path that fits them best.
+A real human has answered 9 questions honestly. They are trusting you to look beyond the surface and tell them who they really are — what patterns their psychology reveals, what hidden strengths live in their words, and the one path that fits THEM.
+
+NOT the path that's popular in their country.
+NOT the path that's trending on LinkedIn.
+NOT the path you'd give to a generic founder.
+
+The path embedded in THEIR answers.
 
 ═══════════════════════════════════════════════════════════
 THE PERSON YOU ARE READING
 ═══════════════════════════════════════════════════════════
 Name: ${userName}
-Country: ${country || 'unknown'}
-City: ${city || ctx.hub}
+Location: ${city || ctx.hub}, ${country || 'MENA'}
 Currency for output: ${ctx.currency}
 
+IMPORTANT: Location is NOT the driver of your recommendation.
+You use location ONLY for:
+- Naming local platforms or apps in the 30-day map (e.g., Instagram, WhatsApp, Jahez, Talabat)
+- Currency in financial estimates
+- One sentence of market context if relevant
+
+The PATH comes from psychology. Not geography.
+
 ═══════════════════════════════════════════════════════════
-THEIR 9 RAW ANSWERS (read these as a psychologist would)
+THEIR 9 RAW ANSWERS
+Read these the way a psychologist would — not a career counselor.
+What do the WORDS reveal about how this person thinks?
+What is UNDERNEATH what they typed?
 ═══════════════════════════════════════════════════════════
 
 Q1 — Something you built, fixed, organized, or created that you're quietly proud of:
 "${answers.proudOf}"
 
-Q2 — When you feel most alive (talking to people all day vs solo deep work):
+Q2 — When you feel most alive (talking to people all day vs solo deep work, or mix):
 "${answers.energySource}"
 
-Q3 — A product/service/habit in the world that's stupid and you could do better:
+Q3 — A product, service, or habit in the world that's stupid — and you could do better:
 "${answers.couldDoBetter}"
 
-Q4 — What friends, family, or coworkers keep coming to YOU for:
+Q4 — What friends, family, or coworkers keep coming to YOU for (what you're the person for):
 "${answers.peopleAskFor}"
 
-Q5 — Work that drains the life out of you, even when you're good at it:
+Q5 — Work that drains the life out of you, even when you're technically good at it:
 "${answers.whatYouHate}"
 
-Q6 — What's actually stopping you from starting right now:
+Q6 — What's ACTUALLY stopping you from starting right now (honest, not the PR version):
 "${answers.whatStopsYou}"
 
-Q7 — A normal Tuesday a year from now if everything goes right:
+Q7 — Describe a normal Tuesday a year from now if everything goes right:
 "${answers.successLooksLike}"
 
-Q8 — What feels most natural to work with (people / products / content / systems / tech / hands / art / mix):
+Q8 — What medium feels most natural to work with (people / products / content / systems / tech / hands / art / mix):
 "${answers.naturalMedium}"
 
 Q9 — Realistic budget for the next 90 days:
 "${answers.budget}"
 
 ═══════════════════════════════════════════════════════════
-HOW TO THINK (silently, before writing JSON)
+HOW TO THINK — YOUR READING PROCESS
+(Do this silently before writing JSON)
 ═══════════════════════════════════════════════════════════
 
-STEP 1 — READ THEIR PSYCHOLOGY, NOT THEIR RESUME
-What does the THING they're proud of (Q1) reveal about how they work?
-Did they build something alone? With others? Did they organize chaos? Did they fix something broken? Did they create something from nothing?
-What does their pride reveal about what they value?
+STEP 1 — READ THE PRIDE SIGNAL (Q1)
+What does the thing they're proud of reveal?
+Did they build alone or with others?
+Did they organize existing chaos or create something new?
+Did they fix a broken system or make something beautiful?
+Their pride object reveals their deepest competence — the thing they do without being asked.
 
-STEP 2 — DETECT WORK STYLE
-Pick the ONE archetype that best fits their answers:
-  • 🔍 The Detective  — observer, researcher, pattern-finder, quiet, deliberate
-  • 🛠 The Builder    — maker, fixer, organizer, prefers tangible outcomes, solo-friendly
-  • 🤝 The Connector  — relational, network-driven, energized by people, sales-natural
-  • 🎭 The Performer  — stage-natural, content-driven, attention-comfortable, expressive
-  • 🎨 The Maker      — craftsperson, aesthetic-driven, taste-led, slow + deep work
-  • ⚙ The Operator   — systems-thinker, process-loving, runs things smoothly, reliable
-  • 🤲 The Artisan    — hands-on, physical, traditional craft, in-person service
-  • 🔀 The Hybrid     — clearly mixed — combines two archetypes meaningfully
+STEP 2 — DETECT THE WORK STYLE ARCHETYPE
+Pick ONE that fits their answers as a whole:
+
+  🔍 The Detective   — observer, researcher, pattern-finder. Works best alone with information. Energized by figuring things out. Drained by performance and small talk.
+  🛠 The Builder     — maker, fixer, organizer. Loves creating tangible results. Prefers solo or small team. Drained by politics and ambiguity.
+  🤝 The Connector   — relational, network-driven. Energized by people and conversation. Naturally sells. Drained by isolation and solo deep work.
+  🎭 The Performer   — stage-comfortable, content-driven, expressive. Attention doesn't scare them. Drained by invisible behind-the-scenes work.
+  🎨 The Maker       — craftsperson, aesthetic-driven, taste-led. Mastery and quality matter more than speed. Drained by factory-like repetition.
+  ⚙ The Operator    — systems-thinker, process-lover. Builds things that run without them. Drained by chaos and undefined roles.
+  🤲 The Artisan     — hands-on, physical, in-person service. Mastery through touch and direct delivery. Drained by screens and remote work.
+  🔀 The Hybrid      — genuinely combines two archetypes (name both, e.g. "Detective + Maker")
 
 STEP 3 — FIND THE HIDDEN STRENGTH
-Their REAL strength is usually hidden in what they don't realize is valuable. Look at what people ask them for (Q4) — that's the strength they undervalue because it comes easy.
+Look at Q4 (what people ask them for) + Q1 (what they built).
+The overlap reveals a strength they undervalue because it comes naturally.
+This is usually the most commercially valuable thing about them.
+Name it specifically. Don't be vague.
 
-STEP 4 — DECODE WHAT REALLY DRIVES THEM
-Read Q7 carefully. "Rich" means nothing. The detail in their Tuesday reveals everything: do they describe freedom? family? recognition? quiet? creativity? respect? Their real fuel lives in those details.
+STEP 4 — DECODE THE REAL MOTIVATION (Q7)
+Ignore what they SAID they want. Read the DETAILS.
+If they describe family peace → security is the real driver
+If they describe a specific daily scene → autonomy is the real driver
+If they describe recognition or respect → status is the real driver
+If they describe creating → expression is the real driver
+The detail in their Tuesday reveals their soul's actual fuel.
 
-STEP 5 — DESIGN THE ROAD OF LEAST RESISTANCE
+STEP 5 — UNDERSTAND WHAT'S REALLY BLOCKING THEM (Q6)
+Most people give the "acceptable" answer (money, time). Read what's underneath.
+Fear of judgment? Fear of failure with witnesses? Fear of leaving security?
+Name the actual psychological block — not the surface excuse.
+Design the 30-day map to route AROUND this block, not through it.
+
+STEP 6 — DESIGN THE ROAD OF LEAST RESISTANCE
 The path must:
-- Match the work style you detected (NOT the industry they hint at)
-- Use the energy source they described (Q2) — never recommend high-people-contact work to a solo-deep-work person
-- AVOID the kind of work they hate (Q5) at all costs — even if it's profitable
-- Fit the budget they actually have (Q9) — be honest if their dream needs more
-- Live in their country if relevant, but DON'T let geography over-constrain — online/remote paths are valid if they fit psychology
-- Address what's stopping them (Q6) — design around their real obstacle, don't pretend it doesn't exist
+✓ Match their work style archetype (Q2 + Q8)
+✓ Use the energy source they described — never give people-heavy work to a solo-deep-worker
+✓ AVOID the drain zone they named (Q5) — even if it's profitable
+✓ Be realistic for their budget (Q9)
+✓ Address the real block from Q6 — not pretend it doesn't exist
+✓ Leverage what people already come to them for (Q4) — that's proven demand
 
-STEP 6 — REJECT GENERIC ANSWERS
-Do NOT default to:
-- "Digital marketing agency"
-- "Generic ecommerce store"
-- "Consulting firm"
-- "SaaS startup"
-unless their psychology EXPLICITLY fits and their answers prove they'd love that work.
-
-The path you recommend could be:
-- A specific business (most common)
+The path can be:
+- A specific service business
 - A creator/personal brand path
+- A product-based business
 - A freelance career
-- A hybrid (job + side business)
-- A specialized service
-- A physical product line
-- An offline trade/craft
-- An online + offline mix
-Whatever ACTUALLY fits them. Don't force "business" if "creator" fits better.
+- A hybrid (side business + income)
+- A specialist consultancy
+- A physical craft or trade
+- An online community or platform
+
+Whatever actually fits. Don't default to "digital marketing agency."
+
+STEP 7 — WRITE AS IF YOU KNOW THEM
+Use ${userName}'s name once or twice in the output.
+Quote specific fragments from their answers (max 3-4 words, not full sentences) to show you read THEM.
+The best output makes them feel: "How did it see that about me?"
 
 ═══════════════════════════════════════════════════════════
-NOW WRITE THE OUTPUT
+JSON OUTPUT — Return this exact shape. No markdown. No explanation.
 ═══════════════════════════════════════════════════════════
-
-Return ONLY valid JSON, no markdown, no backticks, no explanation. This exact shape:
 
 {
   "profile": {
-    "whoYouAre": "ONE devastating sentence using ${userName}'s name that reveals them to themselves. Should make them think 'how did this AI see that about me?'. Connect specific phrases from their answers. NOT generic. NOT flattering. Honest, almost uncomfortable, and clearly written about THEM. 2-3 sentences max.",
-    "realStrength": "The strength hidden in their words — usually visible in what people ask them for (Q4) combined with what they're proud of (Q1). Explain WHY this is rare. 2-3 sentences. Name the strength specifically.",
-    "workStyle": "One of: 🔍 The Detective | 🛠 The Builder | 🤝 The Connector | 🎭 The Performer | 🎨 The Maker | ⚙ The Operator | 🤲 The Artisan | 🔀 The Hybrid (Detective + Maker, etc.). Pick ONE — never multiple unless genuinely Hybrid.",
-    "energyType": "Extrovert-fueled | Introvert-fueled | Mixed (with brief explanation of how their energy works — 1 sentence).",
-    "motivationFuel": "What ACTUALLY drives them (decoded from Q7). 2-3 sentences. Name the real fuel — freedom, proving something, escape from ordinariness, family, respect, quiet, creativity, etc.",
-    "riskDNA": "Their relationship with uncertainty — calculated, intuitive, fear-frozen, controlled, addicted to risk, etc. Read this from how they answered Q6 (what stops them). 2-3 sentences with how to build around it.",
-    "avoidAtAllCost": "The specific KIND of work that would destroy them based on Q5 + Q2. Be specific — 'avoid sales-heavy work' or 'avoid solo isolated work' or 'avoid bureaucratic work'. 1-2 sentences."
+    "whoYouAre": "2-3 sentences. Uses ${userName}'s name. Connects specific fragments from their actual answers to reveal their psychological pattern. Should feel almost uncomfortably accurate — like someone who watched them quietly for months finally speaking. NOT a compliment. A revelation.",
+    "realStrength": "The strength hidden in their words — the overlap between what people ask them for (Q4) and what they built (Q1). Explain WHY this is rare and commercially valuable. 2-3 sentences. Name the specific skill, NOT just the category.",
+    "workStyle": "One of the 8 archetypes — pick the ONE best fit. Format: 🔍 The Detective (or whichever). Include one sentence explaining which specific answers led to this.",
+    "energyType": "Extrovert-fueled | Introvert-fueled | Mixed — plus one sentence on how their specific energy works based on Q2.",
+    "motivationFuel": "What ACTUALLY drives them — decoded from the details in Q7, not the surface answer. Name the real fuel: security, autonomy, status, expression, belonging, proving something. 2-3 sentences. Reference a specific detail from their Q7 answer.",
+    "riskDNA": "Their relationship with uncertainty — read from Q6. Are they fear-frozen? Calculated? Intuition-driven? Addicted to risk? 2-3 sentences. Include how to design around this risk profile, not fight it.",
+    "avoidAtAllCost": "The specific KIND of work that would silently destroy them — from Q5 + Q2. Be specific: 'avoid high-volume sales calls', 'avoid repetitive execution work', 'avoid being the public face'. 1-2 sentences."
   },
   "path": {
-    "name": "The specific path — 6-12 words. Must be concrete and named. Examples: 'Premium handmade leather wallet brand for UAE professionals' or 'Specialized Arabic SEO consulting for Saudi e-commerce stores' or 'Boutique wedding styling service for Riyadh first-generation homeowners'. NEVER 'Digital marketing agency'. NEVER 'Ecommerce store'.",
+    "name": "6-12 words. Concrete and specific. Examples: 'Premium Arabic content strategy for Gulf e-commerce brands' or 'Boutique interior photography service for Riyadh real estate developers' or 'Specialized Arabic UX writing for fintech apps'. NEVER: 'Digital marketing agency'. NEVER: 'E-commerce store'. NEVER: 'Consulting firm'. The path must be specific enough that someone reading it could Google competitors.",
     "pathType": "One of: business | freelance | hybrid | creator | service",
-    "whyThisPath": "3-4 sentences. Connect specific phrases from their answers to specific reasons this path fits THEM. Quote 2-3 fragments from what they wrote. Make them feel this was written about them, not a generic template. Use ${userName}'s name once.",
-    "whyNotAnotherPath": "2-3 sentences. Name the path they were PROBABLY considering (based on hints in their answers) and the honest reason it would have drained them. Reference Q2 or Q5 specifically.",
-    "marketFit": "2-3 sentences on where this lives in ${country || 'their market'} in 2025. Include one concrete number, trend, or neighborhood/segment if you know one. Reference ${ctx.currency} for any prices.",
-    "unfairAdvantage": "The unique combination of who they are + their location + the current timing that competitors can't copy. 2-3 sentences. Quote a phrase from their answers.",
-    "realCost": "Honest truth about what this path will demand from them emotionally and practically. 2-3 sentences. Name the hardest part for THEIR specific psychology."
+    "whyThisPath": "3-4 sentences. Connect specific phrases from their actual answers to specific reasons this path fits THEIR psychology. Reference their work style, their energy type, and their real motivation. Quote 2-3 short fragments from their answers (max 4 words each). Use ${userName}'s name once. The reader should feel: 'yes, this was written about me specifically.'",
+    "whyNotAnotherPath": "2-3 sentences. Name the path they were PROBABLY considering based on hints in their answers. Explain the specific psychological reason it would have drained them within 6 months. Reference Q2 or Q5 specifically.",
+    "marketFit": "2-3 sentences of market context. Reference the ${country || 'MENA'} market specifically if relevant. Include ONE concrete number, trend, or specific customer segment if you can name one honestly. Use ${ctx.currency} for any price references. NOTE: This section is context, not the reason for the path. The path came from their psychology.",
+    "unfairAdvantage": "The specific combination of who they are + the evidence in their answers that competitors cannot replicate. 2-3 sentences. Quote a short fragment from their answers. Connect their background, personality, and natural medium to why they have an edge.",
+    "realCost": "Honest truth about what this path will demand emotionally and practically. 2-3 sentences. Name the hardest part for THEIR specific psychology — the thing they'll want to quit when it gets hard. Don't soften it."
   },
   "thirtyDayMap": {
     "week1_detective": {
-      "theme": "🔍 The Detective Phase — Listen, observe, research. Build nothing yet.",
-      "actions": ["5 specific, doable actions for THIS person", "Named locations or platforms in ${country || 'their country'} when relevant", "Each action one sentence, concrete and measurable", "Reference their work style — a Detective gets research; a Connector gets conversations", "Each action specific enough they could do it today"],
-      "avoid": "The specific mistake THIS personality is likely to make in Week 1.",
-      "psychTrap": "The mental trap they'll hit this week — usually wanting to skip ahead to building. Name it specifically."
+      "theme": "🔍 The Detective Phase — Observe. Listen. Research. Build nothing yet.",
+      "actions": [
+        "Action 1 — specific, doable today. Platform or location in ${city || ctx.hub} if relevant. Measurable outcome.",
+        "Action 2 — tailored to their work style (Detective gets research; Connector gets conversations; Performer creates content; Builder prototypes)",
+        "Action 3 — addresses their specific block from Q6 in a low-risk way",
+        "Action 4 — leverages what people already come to them for (Q4)",
+        "Action 5 — ends with something they can show or report back on"
+      ],
+      "avoid": "The specific mistake THIS personality type makes in Week 1 (usually overthinking, over-researching, or spending money before validating).",
+      "psychTrap": "The mental spiral this person specifically will hit in Week 1. Name it precisely based on their Q6 answer."
     },
     "week2_smallAsk": {
       "theme": "🤲 The Small Ask — Test if anyone will pay. Build nothing big yet.",
-      "actions": ["5 specific actions to test demand cheaply", "Real platforms (Instagram DM, WhatsApp groups, specific marketplaces) in their country", "Pricing if relevant in ${ctx.currency}", "Match their work style — Connectors ask in person, Performers post content, Builders build a tiny prototype", "Each action concrete and doable in a week"],
-      "avoid": "The week 2 trap for THIS personality.",
-      "psychTrap": "The mental pitfall this week — usually fear of asking for money. Specific to them."
+      "actions": [
+        "Action 1 — test demand with zero build. Use WhatsApp, Instagram DM, or a specific local platform.",
+        "Action 2 — specific script or offer to test. Match their work style (Connector asks in person; Performer posts content; Builder builds a minimum prototype)",
+        "Action 3 — price test in ${ctx.currency}. One specific number to test.",
+        "Action 4 — collect feedback in a structured way",
+        "Action 5 — decision point: what they'll know by end of week 2"
+      ],
+      "avoid": "The Week 2 trap for THIS personality.",
+      "psychTrap": "The fear of asking for money specific to their psychology (usually underpricing or avoiding the ask entirely)."
     },
     "week3_firstDollar": {
-      "theme": "💵 The First Dollar — Money in account. Real validation, not theoretical.",
-      "actions": ["5 actions to close their first paying customer", "Specific channels, scripts, platforms", "Pricing in ${ctx.currency}", "What to say, what to offer, what to deliver", "Each one a concrete, doable step"],
-      "avoid": "The first-sale trap for THIS personality.",
-      "psychTrap": "The mental pitfall — often underpricing or over-delivering. Specific to them."
+      "theme": "💵 The First Dollar — Money in. Real validation. Not theoretical.",
+      "actions": [
+        "Action 1 — the specific offer to close. Price in ${ctx.currency}.",
+        "Action 2 — the specific channel to use for this first sale",
+        "Action 3 — what to say in the pitch (2-3 sentences, specific to their product)",
+        "Action 4 — what to deliver to the first customer",
+        "Action 5 — how to get a testimonial or referral from first customer"
+      ],
+      "avoid": "The first-sale self-sabotage this personality type typically does.",
+      "psychTrap": "The mental block at first payment — often underpricing, over-delivering, or stalling with perfectionism."
     },
     "week4_scale": {
       "theme": "📈 The Scale Move — Turn what worked into a repeatable system.",
-      "actions": ["5 actions to systematize and grow", "Real tools, automation, content cadence, referral mechanics", "Match their work style — a Maker scales through quality; a Connector through network; a Performer through content; a Builder through systems", "Each action specific and measurable", "Last action should set up Month 2"],
-      "avoid": "The scaling trap for THIS personality.",
-      "psychTrap": "The mental block at scale stage — usually 'I'm not ready' or 'I should perfect this first'. Specific to them."
+      "actions": [
+        "Action 1 — document the process that worked in Week 3",
+        "Action 2 — automate or systematize one step (tool, template, or script)",
+        "Action 3 — reach 3-5 more potential customers using the same approach",
+        "Action 4 — set up one recurring revenue mechanism (retainer, package, subscription)",
+        "Action 5 — define Month 2 target: specific number of clients + ${ctx.currency} amount"
+      ],
+      "avoid": "The scale trap for THIS personality — usually expanding too fast (Performers) or perfectionism paralysis (Detectives/Makers).",
+      "psychTrap": "The 'not ready yet' pattern specific to their psychology. Name the exact voice they'll hear in their head."
     }
   },
   "scores": {
-    "overall":         <0-100, weighted average>,
-    "psychologyFit":   <0-100, how well this path matches their psychology>,
-    "marketViability": <0-100, how real the market is in ${country || 'their region'}>,
-    "executionFit":    <0-100, how ready they are based on their answers>,
-    "riskBalance":     <0-100, how well this matches their risk DNA from Q6>
+    "overall":         "<0-100 — weighted average of all four>",
+    "psychologyFit":   "<0-100 — how deeply this path matches their detected psychology>",
+    "marketViability": "<0-100 — honest assessment of the path's market in ${country || 'MENA'}>",
+    "executionFit":    "<0-100 — how ready they are based on their answers, budget, and block>",
+    "riskBalance":     "<0-100 — how well this path matches their risk DNA from Q6>"
   },
-  "firstMilestone":   "ONE measurable thing to achieve in 30 days. Specific number + ${ctx.currency} amount if relevant. Examples: '3 paying clients at SAR 800 each' or 'Pre-orders for 20 units at AED 250 each' or '500 qualified email signups + 5 sales calls booked'.",
-  "realisticRevenue": "Honest Month 6 revenue range in ${ctx.currency} for this specific path with this budget. Show the math in one sentence (e.g. '12-20 customers/month × 350 SAR avg = 4,200-7,000 SAR/month')."
+  "firstMilestone": "ONE measurable 30-day target. Specific number + ${ctx.currency} if relevant. Examples: '3 paid clients at ${ctx.currency} 800 each' or 'Pre-orders from 20 people at ${ctx.currency} 250 each' or '500 email signups + 5 sales calls booked'.",
+  "realisticRevenue": "Honest Month 6 range in ${ctx.currency}. Show the math: 'X clients/month × Y ${ctx.currency} avg = Z-W ${ctx.currency}/month'. Base on their budget (${answers.budget}) and path type."
 }`;
 }

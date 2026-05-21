@@ -1,113 +1,80 @@
-const { geminiChat, openrouterChat, openaiChat, MASTER_IDENTITY } = require('./gemini.service');
+const {
+  geminiChat,
+  openrouterChat,
+  openaiChat,
+  deepseekChat,
+  deepseekStream,
+  generateImage,
+  MASTER_IDENTITY,
+} = require('./gemini.service');
 const fs = require('fs');
 const path = require('path');
 
 /* ══════════════════════════════════════════════════════════════════
-   AI SERVICE — MULTI-PROVIDER ARCHITECTURE
-   ─────────────────────────────────────────
-   Gemini Flash     → AI Advisor Chat (streaming) + Academy
-   OpenRouter       → Business DNA + Launch Package (via controllers)
-   OpenAI GPT       → AI Tools (18 generators below)
-
-   Every generator that receives psychProfileBlock context will
-   produce output shaped by the user's psychology — work style,
-   motivation, risk DNA, energy type, what to avoid.
+   AI SERVICE — PROVIDER MAP
+   ─────────────────────────────────────────────────────────────────
+   AI Chat Advisor              → DeepSeek Chat V3     (honest, direct)
+   Business DNA                 → Claude 3.5 Haiku     (deep psychology)
+   Launch Package generators    → GPT-4o-mini          (structured docs)
+   Website Generator            → GPT-4o-mini          (reliable HTML)
+   Academy Founder Path/Journey → GPT-4o-mini          (educational)
+   Academy Daily Insight/Trend  → Gemini Flash 2.5     (fast + free)
+   SEO & Keywords Tool          → GPT-4o-mini          (structured)
+   All other AI Tools           → GPT-4o-mini          (structured JSON)
+   Image Generation             → xAI Grok Aurora      (text→image)
 ══════════════════════════════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════════════════════════════
-   GEMINI FLASH — AI ADVISOR CHAT (Venture Architect)
+   AI CHAT ADVISOR — DeepSeek Chat V3
+   Honest. Direct. No flattery. No over-explanation.
+   If an idea is bad → say it directly and give a better path.
+   Supports image uploads (base64 passed in messages).
 ══════════════════════════════════════════════════════════════════ */
-const ADVISOR_SYSTEM = `You are a high-level Venture Architect, Talent Hunter, and Market Psychologist focused on the MENA region.
+const ADVISOR_SYSTEM = `You are a high-level Venture Architect, Talent Hunter, and Market Psychologist for the MENA region.
 
-WHO YOU ARE TALKING TO:
-The person in front of you is likely a first-generation entrepreneur. They may have never taken a business course. They have an idea they believe in and the courage to try. They need someone who believes in them AND tells them the truth.
+WHO YOU SERVE:
+First-generation MENA entrepreneurs. Limited resources, real ambition. They need a trusted older brother who tells the truth — not a motivational speaker.
 
-YOUR JOB:
-- Find hidden opportunities before they become obvious
-- Detect market gaps, behavioral shifts, and underserved industries
-- Think like an operator, not a motivational speaker
-- Research deeply before answering
-- Never hallucinate, exaggerate, or invent facts
-- Prioritize truth over pleasing the user
-- Focus heavily on MENA realities: Gulf markets, North Africa, Levant, diaspora economics, youth unemployment, digital adoption, family business culture, and government-driven economic transformation
-- Do not over-explain. Specify important points in clear lines for each subject.
+YOUR RULES:
+1. NEVER flatter. If an idea is weak, say so immediately and offer a better direction.
+2. NEVER give long explanations. Answer in clear, short points. Cut everything unnecessary.
+3. NEVER hallucinate facts. Say "I don't know" when you don't.
+4. ALWAYS be specific to MENA — Gulf, North Africa, Levant. Real platforms, real costs, real culture.
+5. If a user asks about something that will NOT succeed — tell them directly. Then give 1-2 better alternatives.
+6. Think like a founder who survived difficult markets, not a consultant.
 
-YOU THINK LIKE:
-- A founder who survived difficult markets
-- A recruiter who understands human ambition
-- A strategist who studies incentives and psychology
-- A local insider who understands Arab culture, status, fear, family pressure, and social reputation
+HOW YOU RESPOND:
+- Short paragraphs, 2-3 sentences max
+- Bold the most important action or warning
+- Number steps when giving a process
+- If you detect a bad idea: "This won't work because [specific reason]. A better direction: [specific alternative]."
+- End responses with one line: **Your next move: [specific action today]**
 
-CORE MISSION — Help people in MENA:
-- Build businesses
-- Discover profitable ideas
-- Understand markets realistically
-- Find talent and opportunities
-- Avoid costly ego-driven mistakes
-- Make decisions based on incentives, timing, and local realities
+WHAT YOU KNOW:
+- Gulf markets (Saudi, UAE, Qatar, Kuwait): purchasing power, status-driven buying, B2B culture
+- North Africa (Egypt, Morocco): price sensitivity, informal economy, diaspora opportunity
+- Levant (Jordan, Lebanon): talent surplus, service exports, economic volatility
+- Arab consumer psychology: reputation, family approval, fear of shame, halal considerations
+- Platform reality: WhatsApp converts, Instagram discovers, TikTok reaches youth, LinkedIn for B2B only
+- Government programs: Vision 2030, UAE initiatives, Egypt's digital economy push
 
-YOU SEARCH FOR:
-- Emerging sectors
-- Underserved customer pain points
-- Hidden B2B opportunities
-- Government-driven growth sectors
-- Talent shortages
-- Behavioral patterns in Arab markets
-- Business models that fit local culture
+WHAT YOU NEVER DO:
+- Give Silicon Valley advice that doesn't work in MENA
+- Recommend ideas disconnected from local purchasing power
+- Encourage without honest assessment
+- Write more than needed
+- Use corporate or academic language
 
-YOU DO NOT:
-- Sell fake motivation
-- Promise guaranteed success
-- Use Silicon Valley advice blindly in MENA
-- Ignore political, economic, or cultural realities
-- Recommend ideas disconnected from purchasing power
-
-RESEARCH & THINKING STYLE:
-- When users are scared → give them clarity, not empty encouragement
-- When users fail → treat failure as market data
-- When users hesitate → break decisions into small realistic moves
-- When users dream big → help them separate ego from opportunity
-
-YOU ANALYZE:
-- The psychology of customers
-- The psychology of founders
-- The psychology of hiring
-- Status-driven buying behavior
-- Fear-based decision making in Arab societies
-
-BEFORE ANSWERING:
-- Analyze the country's economic reality
-- Understand the user's psychological state
-- Evaluate local purchasing power
-- Consider regulations, taxes, and business culture
-- Search for second-order opportunities others miss
-- Think long-term, not trend-chasing
-
-YOUR ANSWERS FEEL LIKE:
-- A smart older brother
-- A battle-tested founder
-- A calm strategist
-- Someone who truly knows the region
-
-NOT:
-- A corporate consultant
-- A hype Twitter entrepreneur
-- A generic AI chatbot
-
-FORMAT:
-- Use markdown for structure
-- Keep paragraphs 2-3 sentences max
-- Bold the most important action items
-- Number steps when listing
-- End every answer with: **Your next action: [specific thing to do today]**`;
+IMAGES: If the user shares a screenshot or image, analyze it directly and give actionable feedback.`;
 
 async function chat(messages, systemPrompt, language) {
   let sysMsg = systemPrompt || ADVISOR_SYSTEM;
   if (language === 'ar') {
     sysMsg += `\n\nCRITICAL: Respond ENTIRELY in Modern Standard Arabic (الفصحى). Keep brand names and URLs in original language. Never respond in English.`;
   }
+  // Build conversation string for non-streaming fallback
   const conversation = messages.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n\n');
-  return geminiChat(`Previous conversation:\n${conversation}\n\nRespond as the assistant.`, sysMsg, { temperature: 0.7 });
+  return deepseekChat(`Previous conversation:\n${conversation}\n\nRespond as the assistant.`, sysMsg, { temperature: 0.7 });
 }
 
 async function streamChat(messages, type, onChunk, language) {
@@ -115,26 +82,14 @@ async function streamChat(messages, type, onChunk, language) {
   if (language === 'ar') {
     sysMsg += `\n\nCRITICAL: Respond ENTIRELY in Modern Standard Arabic (الفصحى). Keep brand names and URLs in original language. Never respond in English.`;
   }
-  const { GoogleGenerativeAI } = require('@google/generative-ai');
-  const genAI2 = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI2.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: sysMsg,
-    generationConfig: { temperature: 0.7, topP: 0.95 },
-  });
-  const geminiHistory = [];
-  for (const m of messages.slice(0, -1)) {
-    geminiHistory.push({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] });
-  }
-  const lastMsg = messages[messages.length - 1];
-  const chatSession = model.startChat({ history: geminiHistory });
-  const result = await chatSession.sendMessageStream(lastMsg.content);
-  let full = '';
-  for await (const chunk of result.stream) {
-    const text = chunk.text();
-    if (text) { full += text; if (onChunk) onChunk(text); }
-  }
-  return full;
+
+  // Build messages array for DeepSeek
+  const deepseekMessages = messages.map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content,
+  }));
+
+  return deepseekStream(deepseekMessages, sysMsg, onChunk);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -171,13 +126,17 @@ RULES FOR THIS DOCUMENT:
    CURRENCY HELPER
 ══════════════════════════════════════════════════════════════════ */
 function getCurrency(country) {
-  const map = { 'Saudi Arabia':'SAR','UAE':'AED','Egypt':'EGP','Qatar':'QAR','Kuwait':'KWD','Bahrain':'BHD','Oman':'OMR','Jordan':'JOD','Morocco':'MAD','Lebanon':'LBP' };
+  const map = {
+    'Saudi Arabia': 'SAR', 'UAE': 'AED', 'Egypt': 'EGP', 'Qatar': 'QAR',
+    'Kuwait': 'KWD', 'Bahrain': 'BHD', 'Oman': 'OMR', 'Jordan': 'JOD',
+    'Morocco': 'MAD', 'Lebanon': 'LBP',
+  };
   return map[country] || 'USD';
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   GPT-5.4 MINI TOOL GENERATORS (OpenAI)
-   Each prompt uses psychProfileBlock when available.
+   GPT-4o-mini TOOL GENERATORS — Launch Package + AI Tools
+   All use openaiChat for reliability and structured output
 ══════════════════════════════════════════════════════════════════ */
 
 async function generateBrandKit(inputs) {
@@ -286,13 +245,6 @@ Team: ${inputs.teamSize || 'Solo'}
 Status: ${inputs.currentStatus || 'Pre-launch'}
 Goal: ${inputs.goal || 'First paying customer'}
 
-This roadmap must be shaped by the founder's psychology:
-- Detective founders get research-heavy early weeks
-- Builder founders get prototype-focused weeks
-- Connector founders get relationship-led validation
-- Performer founders get content-led launches
-- Maker founders get craft-first approaches
-
 Deliver DAY BY DAY (not week by week):
 ## Pre-Launch Setup (Days 1-5): Legal, tools, accounts specific to their country
 ## Market Validation (Days 6-12): Testing demand without building anything yet
@@ -313,18 +265,7 @@ Contract Type: ${inputs.contractType || 'Service Agreement'}
 Parties: ${inputs.parties || 'Service Provider and Client'}
 Country/Law: ${inputs.jurisdiction || 'UAE'}
 
-Deliver a complete, usable contract including:
-## Header & Parties
-## Scope of Work / Services
-## Payment Terms (in local currency, milestone-based)
-## Duration & Renewal
-## Intellectual Property
-## Confidentiality
-## Liability & Indemnification
-## Termination Conditions
-## Dispute Resolution (Reference local arbitration: DIAC for UAE, SCCA for Saudi, etc.)
-## Signatures Block
-
+Deliver a complete, usable contract including all standard clauses.
 Note: This is a template. Recommend they have a local lawyer review before use. Reference specific local business law where relevant.`, MASTER_IDENTITY, { language: inputs.language });
 }
 
@@ -340,15 +281,15 @@ Revenue Model: ${inputs.revenueModel || 'Service-based'}
 Target: ${inputs.targetRevenue || 'Break-even by Month 6'}
 
 Deliver in local currency (${getCurrency(inputs.location)}):
-## Startup Costs (One-time: licenses, equipment, setup. Specific to ${inputs.location})
-## Monthly Fixed Costs (Rent, salaries, subscriptions, insurance — real numbers for this market)
+## Startup Costs (One-time: licenses, equipment, setup)
+## Monthly Fixed Costs (Rent, salaries, subscriptions — real numbers for this market)
 ## Variable Costs (Per unit/client costs)
-## Revenue Assumptions (Conservative / Moderate / Optimistic — show the math)
-## Month-by-Month P&L Table (Revenue - Costs = Profit/Loss for months 1-6)
-## Cash Flow Analysis (When money comes in vs goes out — the survival question)
-## Break-Even Point (Exactly how many customers/sales to cover costs)
-## Runway Calculator (How long their budget lasts at current burn rate)
-## Key Metrics to Track (The 3 numbers that determine if they live or die)
+## Revenue Assumptions (Conservative / Moderate / Optimistic)
+## Month-by-Month P&L Table (Months 1-6)
+## Cash Flow Analysis
+## Break-Even Point
+## Runway Calculator
+## Key Metrics to Track (The 3 numbers that determine survival)
 
 Be brutally honest. Use real costs for ${inputs.location}. Don't inflate revenue assumptions.`, MASTER_IDENTITY, { language: inputs.language });
 }
@@ -364,21 +305,7 @@ Ask: ${inputs.fundingAsk || 'To be determined'}
 Market: ${inputs.market || 'MENA'}
 Traction: ${inputs.traction || 'Pre-revenue'}
 
-Deliver 12 slides with exact text:
-## Slide 1: Title (Company + one-line hook)
-## Slide 2: Problem (The pain — make investors feel it)
-## Slide 3: Solution (What you do, in 15 words)
-## Slide 4: Market Size (TAM/SAM/SOM in ${getCurrency(inputs.market || 'UAE')})
-## Slide 5: Business Model (How money flows — simple)
-## Slide 6: Traction / Proof (What you've done — even if small, frame it right)
-## Slide 7: Competition (Your 2x2 matrix — show the gap)
-## Slide 8: Unique Advantage (Connect to the founder's psychological edge)
-## Slide 9: Go-to-Market (First 1000 customers — realistic channels)
-## Slide 10: Team (Frame the founder's psychology as a strategic asset)
-## Slide 11: Financials (Month 1-12 projections, key milestones)
-## Slide 12: The Ask (What you need, what you'll do with it, what investors get)
-
-Design notes for each slide (colors, layout, what image/chart to include).
+Deliver 12 slides with exact text for each slide.
 Tailored for MENA investors who care about: execution speed, market size, founder quality, and capital efficiency.`, MASTER_IDENTITY, { language: inputs.language });
 }
 
@@ -392,24 +319,17 @@ Target: ${inputs.targetAudience}
 Platform: ${inputs.platform || 'Instagram + Facebook'}
 Goal: ${inputs.goal || 'Leads'}
 Tone: ${inputs.tone || 'Professional but warm'}
-Budget Note: ${inputs.adBudget || 'Low budget — efficiency matters'}
 
 Deliver for EACH platform:
-## Instagram (3 ad variations: hook + body + CTA. Include Arabic versions)
-## Facebook (3 ad variations with longer copy)
-## Google Ads (5 responsive search ad combinations: headlines + descriptions)
-## WhatsApp Status (3 short promo texts for status updates — this is how MENA sells)
+## Instagram (3 ad variations with Arabic versions)
+## Facebook (3 ad variations)
+## Google Ads (5 responsive search ad combinations)
+## WhatsApp Status (3 short promo texts — how MENA sells)
 
-For each ad:
-- The hook (first 3 words that stop the scroll)
-- The body (why they should care)
-- The CTA (what to do now)
-- Arabic version
-- Targeting suggestion (age, interest, location)
-
-Understand MENA ad behavior: WhatsApp is the conversion channel. Instagram is discovery. Facebook is retargeting. Google is intent capture.`, MASTER_IDENTITY, { language: inputs.language });
+MENA ad behavior: WhatsApp is the conversion channel. Instagram is discovery. Google is intent capture.`, MASTER_IDENTITY, { language: inputs.language });
 }
 
+/* SEO — GPT-4o-mini per spec */
 async function generateSeoKeywords(inputs) {
   return openaiChat(`${psychProfileBlock(inputs)}
 Create a complete SEO Strategy for a MENA business.
@@ -431,7 +351,7 @@ Deliver:
 ## English Keywords — Research Intent (15 keywords — for content)
 ## Long-Tail Quick Wins (25 low-competition phrases with real buyers)
 ## Local SEO Strategy (Google Business Profile, citations, neighborhood keywords)
-## Content Cluster Map (5 pillars × 5 articles each = 30 pieces mapped)
+## Content Cluster Map (5 pillars × 5 articles each)
 ## Technical SEO Checklist (Top 5 issues MENA websites typically have)
 ## 90-Day SEO Roadmap (Month by month — specific tasks and expected results)`, MASTER_IDENTITY, { language: inputs.language });
 }
@@ -446,19 +366,12 @@ Offer: ${inputs.offer || 'Service/product'}
 Tone: ${inputs.tone || 'Professional, warm, direct'}
 
 Deliver:
-## Email Sequence (5 emails: initial → follow-up 1 → value add → social proof → final)
-## LinkedIn DM Sequence (3 messages: connect note → value → soft ask)
-## WhatsApp Script (3 versions: warm intro, cold intro, referral intro)
-## Instagram DM Script (First message + follow-up)
+## Email Sequence (5 emails)
+## LinkedIn DM Sequence (3 messages)
+## WhatsApp Script (3 versions: warm intro, cold intro, referral)
+## Instagram DM Script
 
-For each message:
-- Subject line (email only)
-- Opening hook (first sentence)
-- Body (2-3 sentences max)
-- CTA (one clear action)
-- Arabic version
-
-MENA outreach rules: warmth before business, reputation matters, WhatsApp > email for SMBs, LinkedIn for B2B only.`, MASTER_IDENTITY, { language: inputs.language });
+MENA outreach rules: warmth before business, WhatsApp > email for SMBs, LinkedIn for B2B only.`, MASTER_IDENTITY, { language: inputs.language });
 }
 
 async function generateSalesScript(inputs) {
@@ -471,16 +384,13 @@ Target: ${inputs.targetAudience || 'MENA market'}
 Price: ${inputs.price || 'To be discussed'}
 
 Deliver:
-## The Opening (First 30 seconds — build trust, not pitch)
-## Discovery Questions (10 questions to understand the buyer's real need)
-## The Pitch (90-second version — problem → solution → proof → offer)
-## Objection Handling (Top 7 objections in MENA markets + exact responses)
-  - "Too expensive" / "Need to think" / "My friend does this" / "Not now" / "Send me on WhatsApp" / "I don't trust online" / "Is this halal?"
-## The Close (3 closing techniques that work in Arab culture — respect-based, not pressure-based)
-## WhatsApp Follow-Up (Post-meeting sequence: 3 messages over 7 days)
-## Arabic Versions (Key phrases in Arabic that build trust)
-
-Understand: In MENA, the relationship closes the sale, not the pitch. Status, trust, and reputation drive decisions.`, MASTER_IDENTITY, { language: inputs.language });
+## The Opening (First 30 seconds)
+## Discovery Questions (10 questions)
+## The Pitch (90-second version)
+## Objection Handling (Top 7 MENA objections: too expensive / need to think / not now / send on WhatsApp / don't trust online / is this halal?)
+## The Close (3 techniques that work in Arab culture — respect-based, not pressure-based)
+## WhatsApp Follow-Up (3 messages over 7 days)
+## Arabic Versions (Key phrases)`, MASTER_IDENTITY, { language: inputs.language });
 }
 
 async function generateMarketResearch(inputs) {
@@ -493,18 +403,16 @@ Product: ${inputs.product}
 Budget: ${inputs.budget || 'Bootstrap'}
 
 Deliver:
-## Market Overview (Size, growth rate, key trends in ${inputs.region}. Use local currency.)
-## Customer Segmentation (3-5 segments with demographics, psychographics, purchasing behavior specific to MENA)
-## Demand Analysis (What people actually search for, ask for, complain about in this space — Arabic + English)
-## Competitive Landscape (5-8 players with strengths/weaknesses. Who's winning and why.)
-## Pricing Intelligence (What the market pays. Price sensitivity. Premium vs value positioning.)
-## Distribution Channels (How products/services actually reach customers in ${inputs.region} — Instagram, WhatsApp, souqs, malls, online)
-## Regulatory Environment (Licenses, restrictions, taxes specific to this niche in ${inputs.region})
-## SWOT Analysis (Specific to THIS business in THIS market)
-## Market Entry Strategy (The fastest path to first revenue with ${inputs.budget} budget)
-## 3-Month Action Plan (Specific weekly actions to validate and enter this market)
-
-Be specific. Use real numbers. Reference real platforms and real costs in ${inputs.region}.`, MASTER_IDENTITY, { language: inputs.language });
+## Market Overview (Size, growth rate, key trends in ${inputs.region})
+## Customer Segmentation (3-5 segments with MENA psychographics)
+## Demand Analysis (What people search for, ask for, complain about)
+## Competitive Landscape (5-8 players — real names, real strengths/weaknesses)
+## Pricing Intelligence
+## Distribution Channels (How products reach customers in ${inputs.region})
+## Regulatory Environment (Licenses, restrictions, taxes for this niche)
+## SWOT Analysis
+## Market Entry Strategy (Fastest path to first revenue with ${inputs.budget})
+## 3-Month Action Plan`, MASTER_IDENTITY, { language: inputs.language });
 }
 
 async function generateMarketingStrategy(inputs) {
@@ -520,18 +428,16 @@ Current Presence: ${inputs.currentPresence || 'Starting fresh'}
 Timeline: ${inputs.timeline || '6 months'}
 
 Deliver:
-## Brand Positioning Statement (One sentence that separates this business from every competitor)
-## Target Customer Avatar (Demographics + psychographics + buying triggers specific to MENA)
-## Channel Strategy (Rank channels by ROI for THIS business: Instagram, WhatsApp, TikTok, Google, LinkedIn, local events, partnerships)
-## Content Strategy (What to post, frequency, format. Arabic + English content calendar for 30 days)
-## Paid Advertising Plan (Platforms, budgets in local currency, targeting, creative direction)
-## Organic Growth Tactics (5 zero-cost tactics that work in MENA markets specifically)
-## WhatsApp Marketing (The most underrated channel in MENA — catalog, broadcast, community strategy)
-## Partnerships & Collaborations (5 specific potential partners in ${inputs.industry})
-## KPIs & Metrics (What to track weekly, what "good" looks like at each stage)
-## 6-Month Roadmap (Month by month — budget allocation, channel focus, milestones)
-
-Match the strategy to this founder's personality: don't give a Performer's strategy to a Detective, or a Connector's approach to a solo Builder.`, MASTER_IDENTITY, { language: inputs.language });
+## Brand Positioning Statement
+## Target Customer Avatar (MENA psychographics)
+## Channel Strategy (Ranked by ROI: Instagram, WhatsApp, TikTok, Google, LinkedIn, local events)
+## Content Strategy (30-day content calendar — Arabic + English)
+## Paid Advertising Plan (Platforms, budgets in local currency)
+## Organic Growth Tactics (5 zero-cost tactics that work in MENA)
+## WhatsApp Marketing (Catalog, broadcast, community strategy)
+## Partnerships & Collaborations (5 specific potential partners)
+## KPIs & Metrics
+## 6-Month Roadmap`, MASTER_IDENTITY, { language: inputs.language });
 }
 
 async function generateMarketStudy(inputs) {
@@ -542,7 +448,7 @@ Topic: ${inputs.topic || inputs.niche}
 Region: ${inputs.region || 'MENA'}
 Depth: ${inputs.depth || 'Comprehensive'}
 
-Deliver a research-grade market study covering:
+Deliver:
 ## Industry Overview
 ## Market Size & Growth
 ## Key Players & Market Share
@@ -556,7 +462,53 @@ Use real data points. Reference ${inputs.region} specifically.`, MASTER_IDENTITY
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   WEBSITE CREATOR — Template-based (Gemini Flash)
+   ACADEMY — FOUNDER PATH (GPT-4o-mini)
+   Daily Journey sessions — personalized, MENA-specific
+══════════════════════════════════════════════════════════════════ */
+async function generateFounderPathSession(sessionData, dnaContext, language) {
+  const psychCtx = dnaContext ? `
+═══ PERSONALIZING FOR THIS FOUNDER ═══
+Work Style: ${dnaContext.workStyle || 'Not set'}
+Energy Type: ${dnaContext.energyType || 'Not set'}
+Their Path: ${dnaContext.pathName || 'Not set'}
+Country: ${dnaContext.country || 'MENA'}
+Hidden Strength: ${dnaContext.realStrength || 'Not set'}
+Avoid at all cost: ${dnaContext.avoidAtAllCost || 'Not set'}
+═══════════════════════════════════════` : '';
+
+  return openaiChat(`${psychCtx}
+Generate an interactive learning session for the Double Eight AI Academy.
+
+Session: ${sessionData.title}
+Step: ${sessionData.stepTitle}
+Duration: ${sessionData.duration || '12 min'}
+Focus: ${sessionData.focus}
+Country context: ${dnaContext?.country || 'MENA'}
+
+Deliver a COMPLETE learning session:
+
+## Opening Hook (1-2 sentences that immediately connect to this founder's specific reality in MENA. Make them feel this was written for them.)
+
+## The Core Lesson (800-1200 words)
+- Real MENA examples, not Silicon Valley
+- Stories of Arab founders or MENA businesses where relevant
+- Use the founder's work style to frame the content (Detectives get data; Connectors get stories; Builders get systems)
+- Break into 3-4 clear sections with headers
+
+## The Reality Check (What most MENA founders get wrong about this topic. Be direct.)
+
+## Your Reflection Exercise (1 specific writing prompt or task tailored to their psychology)
+
+## The Action Step (ONE concrete thing to do today — specific to their country and budget)
+
+## Key Takeaway (One unforgettable sentence they'll remember tomorrow)
+
+Write in a voice that feels like a brilliant, battle-tested mentor who knows the Arab world. Not academic. Not corporate. Real.`, MASTER_IDENTITY, { language, temperature: 0.8 });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   WEBSITE GENERATOR — GPT-4o-mini (FIXED)
+   Three-pass approach: validate → generate → repair if needed
 ══════════════════════════════════════════════════════════════════ */
 const TEMPLATE_MAP = {
   'Business / Company':   'business.html',
@@ -574,64 +526,130 @@ function loadTemplate(websiteType) {
   const filepath = path.join(__dirname, '..', 'website-templates', filename);
   if (!fs.existsSync(filepath)) {
     const fallback = path.join(__dirname, '..', 'website-templates', 'business.html');
-    if (!fs.existsSync(fallback)) throw new Error('No website templates found. Add HTML files to /website-templates/');
+    if (!fs.existsSync(fallback)) throw new Error('No website templates found');
     return fs.readFileSync(fallback, 'utf8');
   }
   return fs.readFileSync(filepath, 'utf8');
 }
 
+const COLOR_SCHEMES = {
+  'Dark & Gold (Luxury)':     { primary: '#f59e0b', accent: '#d97706', bg: '#0a0a0f', text: '#fefce8' },
+  'Light & Clean (Minimal)':  { primary: '#1f2937', accent: '#3b82f6', bg: '#ffffff', text: '#1f2937' },
+  'Dark & Blue (Tech)':       { primary: '#3b82f6', accent: '#06b6d4', bg: '#0f172a', text: '#f1f5f9' },
+  'White & Green (Health)':   { primary: '#10b981', accent: '#059669', bg: '#f9fafb', text: '#064e3b' },
+  'Dark & Purple (Creative)': { primary: '#a855f7', accent: '#ec4899', bg: '#1a0a2e', text: '#fae8ff' },
+};
+
 function applyFallbackEdits(template, inputs) {
   let html = template;
   const name = inputs.businessName || 'Your Business';
-  html = html.replace(/\{\{\s*BRAND_NAME\s*\}\}/g, name).replace(/\{\{\s*BUSINESS_NAME\s*\}\}/g, name).replace(/\{\{\s*COMPANY_NAME\s*\}\}/g, name);
-  const schemes = {
-    'Dark & Gold (Luxury)':     { primary:'#f59e0b', accent:'#d97706', bg:'#0a0a0f', text:'#fefce8' },
-    'Light & Clean (Minimal)':  { primary:'#1f2937', accent:'#3b82f6', bg:'#ffffff', text:'#1f2937' },
-    'Dark & Blue (Tech)':       { primary:'#3b82f6', accent:'#06b6d4', bg:'#0f172a', text:'#f1f5f9' },
-    'White & Green (Health)':   { primary:'#10b981', accent:'#059669', bg:'#f9fafb', text:'#064e3b' },
-    'Dark & Purple (Creative)': { primary:'#a855f7', accent:'#ec4899', bg:'#1a0a2e', text:'#fae8ff' },
-  };
-  const s = schemes[inputs.colors] || schemes['Dark & Gold (Luxury)'];
-  html = html.replace(/\{\{\s*PRIMARY_COLOR\s*\}\}/g, s.primary).replace(/\{\{\s*ACCENT_COLOR\s*\}\}/g, s.accent).replace(/\{\{\s*BG_COLOR\s*\}\}/g, s.bg).replace(/\{\{\s*TEXT_COLOR\s*\}\}/g, s.text);
+  html = html
+    .replace(/\{\{\s*BRAND_NAME\s*\}\}/g, name)
+    .replace(/\{\{\s*BUSINESS_NAME\s*\}\}/g, name)
+    .replace(/\{\{\s*COMPANY_NAME\s*\}\}/g, name);
+
+  const s = COLOR_SCHEMES[inputs.colors] || COLOR_SCHEMES['Dark & Gold (Luxury)'];
+  html = html
+    .replace(/\{\{\s*PRIMARY_COLOR\s*\}\}/g, s.primary)
+    .replace(/\{\{\s*ACCENT_COLOR\s*\}\}/g, s.accent)
+    .replace(/\{\{\s*BG_COLOR\s*\}\}/g, s.bg)
+    .replace(/\{\{\s*TEXT_COLOR\s*\}\}/g, s.text);
   return html;
+}
+
+function extractHTML(raw) {
+  if (!raw) throw new Error('Empty response');
+  let html = String(raw).trim();
+  // Strip markdown fences
+  html = html.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+  // Extract the HTML document
+  const match = html.match(/<!DOCTYPE\s+html[\s\S]*<\/html>/i);
+  if (match) return match[0];
+  // If no doctype but has <html>, try that
+  const htmlMatch = html.match(/<html[\s\S]*<\/html>/i);
+  if (htmlMatch) return `<!DOCTYPE html>\n${htmlMatch[0]}`;
+  throw new Error('No valid HTML document found in response');
 }
 
 async function generateWebsiteCreation(inputs) {
   const template = loadTemplate(inputs.content || 'Business / Company');
   const isAr = inputs.language === 'ar';
-  try {
-    const raw = await geminiChat(
-      `You are editing an existing HTML website template. Make targeted edits for this business:
-Brand: ${inputs.businessName || 'Untitled'}
+  const schemeInfo = COLOR_SCHEMES[inputs.colors] || COLOR_SCHEMES['Dark & Gold (Luxury)'];
+
+  const websitePrompt = `You are an expert web developer. Your ONLY job is to return a complete, valid HTML file.
+
+STRICT RULES:
+1. Return ONLY the HTML file. Start with <!DOCTYPE html>. End with </html>.
+2. DO NOT include any text before <!DOCTYPE html> or after </html>.
+3. DO NOT use markdown code fences (no \`\`\`html).
+4. DO NOT truncate or cut off the HTML — return the COMPLETE file.
+5. The output MUST be a working website when opened in a browser.
+
+CUSTOMIZE THIS TEMPLATE for the following business:
+
+Business Name: ${inputs.businessName || 'My Business'}
 Type: ${inputs.content || 'Business'}
-Sections: ${inputs.sections || 'Full'}
-Colors: ${inputs.colors || 'Dark & Gold'}
-Fonts: ${inputs.fonts || 'Modern Sans-Serif'}
-Interactive: ${inputs.interactive || 'Smooth scroll'}
-Extra: ${inputs.extraDetails || 'None'}
-Language: ${isAr ? 'ARABIC — translate all text, set dir="rtl"' : 'English'}
+Language: ${isAr ? 'Arabic — set dir="rtl" on html tag, translate ALL text to Arabic' : 'English'}
+Color Scheme: ${inputs.colors || 'Dark & Gold'}
+  - Primary color: ${schemeInfo.primary}
+  - Accent color: ${schemeInfo.accent}
+  - Background: ${schemeInfo.bg}
+  - Text: ${schemeInfo.text}
+Fonts: ${inputs.fonts || 'Modern Sans-Serif (Outfit from Google Fonts)'}
+Sections: ${inputs.sections || 'Full website — hero, about, services, testimonials, contact'}
+Interactive features: ${inputs.interactive || 'Smooth scroll, mobile responsive'}
+Extra details: ${inputs.extraDetails || 'None'}
 
-Edit: brand name, headlines, body copy, colors in :root, fonts, CTA text. Keep structure intact.
-Return ONLY the edited HTML starting with <!DOCTYPE html>. No markdown fences.
+WHAT TO CHANGE in the template:
+- Replace {{BRAND_NAME}}, {{BUSINESS_NAME}}, {{COMPANY_NAME}} with: ${inputs.businessName || 'My Business'}
+- Replace {{PRIMARY_COLOR}} with: ${schemeInfo.primary}
+- Replace {{ACCENT_COLOR}} with: ${schemeInfo.accent}
+- Replace {{BG_COLOR}} with: ${schemeInfo.bg}
+- Replace {{TEXT_COLOR}} with: ${schemeInfo.text}
+- Update all headline text, body copy, and section content to match the business
+- Update navigation links to match the sections
+- Keep all CSS and JavaScript working
+${isAr ? '- Set html dir="rtl", translate all visible text to Arabic, adjust text-align for RTL' : ''}
 
-THE TEMPLATE:
-${template}`,
-      'You are an expert web developer. Output ONLY clean HTML.',
-      { temperature: 0.5, language: inputs.language }
+THE TEMPLATE TO EDIT:
+${template}
+
+RETURN ONLY THE COMPLETE EDITED HTML FILE. NOTHING ELSE.`;
+
+  try {
+    const raw = await openaiChat(
+      websitePrompt,
+      'You are an expert web developer. Output ONLY the complete HTML file, nothing else. No explanations, no markdown, no code fences. Just the HTML.',
+      { temperature: 0.3, maxTokens: 8192 }
     );
-    let html = String(raw).trim().replace(/^```html\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/i,'').trim();
-    const match = html.match(/<!DOCTYPE\s+html[\s\S]*<\/html>/i);
-    if (match) html = match[0]; else throw new Error('Invalid HTML');
-    if (html.length < template.length * 0.5) throw new Error('Truncated');
+
+    const html = extractHTML(raw);
+
+    // Validate minimum size (template is ~25KB, edited should be at least 50% of that)
+    if (html.length < template.length * 0.4) {
+      console.warn('Website generation: HTML too short, applying fallback edits');
+      return applyFallbackEdits(template, inputs);
+    }
+
     return html;
   } catch (err) {
-    console.error('Website AI edit failed, using fallback:', err.message);
+    console.error('Website generation failed, using fallback:', err.message);
     return applyFallbackEdits(template, inputs);
   }
 }
 
 // Legacy alias
 async function generateWebsiteCopy(inputs) { return generateWebsiteCreation(inputs); }
+
+/* ══════════════════════════════════════════════════════════════════
+   IMAGE GENERATION — xAI Grok Aurora
+   Used by tools.controller for the Image section
+══════════════════════════════════════════════════════════════════ */
+async function generateImageFromText(prompt, options = {}) {
+  // Enhance prompt for quality
+  const enhancedPrompt = `${prompt}. Professional quality, high resolution, detailed.`;
+  return generateImage(enhancedPrompt, options);
+}
 
 /* ══════════════════════════════════════════════════════════════════
    INPUT SANITIZATION
@@ -643,9 +661,10 @@ function sanitizeInputs(inputs) {
     const val = inputs[key];
     if (val == null) { out[key] = val; continue; }
     if (typeof val === 'string') {
-      let s = val.replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u202F\uFEFF]/g, ' ')
-        .replace(/\[\/?INST\]/gi, '')
-        .replace(/<\|\/?(?:system|user|assistant|im_start|im_end)\|>/gi, '')
+      let s = val
+        .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u202F\uFEFF]/g, ' ')
+        .replace(/\[\/?\s*INST\]/gi, '')
+        .replace(/<\|\/?\s*(?:system|user|assistant|im_start|im_end)\|>/gi, '')
         .replace(/```\s*(?:system|assistant|user)\b/gi, '')
         .replace(/\s+/g, ' ').trim();
       if (s.length > 4000) s = s.slice(0, 4000);
@@ -660,17 +679,34 @@ function sanitizeInputs(inputs) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   ONE-LINE GENERATORS (OpenAI GPT)
+   EXPORTS
 ══════════════════════════════════════════════════════════════════ */
 module.exports = {
-  chat, streamChat, sanitizeInputs,
-  generateBrandKit, generateBusinessPlan, generateCompetitorMatrix,
-  generatePricingCalculator, generateLaunchRoadmap, generateContract,
-  generateBudgetEstimator, generatePitchDeck, generateAdCopy,
-  generateSeoKeywords, generateColdEmail, generateSalesScript,
-  generateMarketResearch, generateMarketingStrategy, generateMarketStudy,
-  generateWebsiteCreation, generateWebsiteCopy,
-  generateBusinessName: (i) => openaiChat(`Generate 10 creative business names for: Industry: ${i.industry}, Description: ${i.description}, Style: ${i.style||'Modern'}, Market: ${i.targetMarket||'MENA'}. For each: name, domain suggestion, tagline, why it works. Include Arabic-friendly options.`, MASTER_IDENTITY, { language: i.language }),
+  chat,
+  streamChat,
+  sanitizeInputs,
+  generateFounderPathSession,
+  generateImageFromText,
+  // Tools
+  generateBrandKit,
+  generateBusinessPlan,
+  generateCompetitorMatrix,
+  generatePricingCalculator,
+  generateLaunchRoadmap,
+  generateContract,
+  generateBudgetEstimator,
+  generatePitchDeck,
+  generateAdCopy,
+  generateSeoKeywords,
+  generateColdEmail,
+  generateSalesScript,
+  generateMarketResearch,
+  generateMarketingStrategy,
+  generateMarketStudy,
+  generateWebsiteCreation,
+  generateWebsiteCopy,
+  // One-liners
+  generateBusinessName: (i) => openaiChat(`Generate 10 creative business names for: Industry: ${i.industry}, Description: ${i.description}, Style: ${i.style || 'Modern'}, Market: ${i.targetMarket || 'MENA'}. For each: name, domain suggestion, tagline, why it works. Include Arabic-friendly options.`, MASTER_IDENTITY, { language: i.language }),
   generateSlogan: (i) => openaiChat(`Generate 15 slogans for ${i.businessName} in ${i.industry}. Core value: ${i.coreValue}. Tone: ${i.tone}. Give 5 in Arabic, 10 in English. For each: the slogan + why it works for MENA.`, MASTER_IDENTITY, { language: i.language }),
-  generateContentCalendar: (i) => openaiChat(`Create a 30-day social media content calendar for ${i.businessName} in ${i.industry}. Platforms: ${i.platforms||'Instagram, WhatsApp'}. Voice: ${i.brandVoice||'Professional'}. For each day: platform, type, full caption in Arabic AND English, hashtags, time.`, MASTER_IDENTITY, { language: i.language }),
+  generateContentCalendar: (i) => openaiChat(`Create a 30-day social media content calendar for ${i.businessName} in ${i.industry}. Platforms: ${i.platforms || 'Instagram, WhatsApp'}. Voice: ${i.brandVoice || 'Professional'}. For each day: platform, type, full caption in Arabic AND English, hashtags, time.`, MASTER_IDENTITY, { language: i.language }),
 };

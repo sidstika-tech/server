@@ -1,4 +1,4 @@
-const { generateAcademyDaily, geminiChat, MASTER_IDENTITY } = require('../services/gemini.service');
+const { generateAcademyDaily, geminiChat, openaiChat, MASTER_IDENTITY } = require('../services/gemini.service');
 const AcademyProgress = require('../models/academyProgress.model');
 const BusinessDNA = require('../models/businessDNA.model');
 const { createNotification } = require('./notification.controller');
@@ -332,7 +332,7 @@ Return the lesson as clean markdown with these sections:
 You are writing a single lesson in a 5-step founder's path. Your readers are mostly first-generation entrepreneurs across MENA. Be specific, warm, honest, and culturally aware. Never use Western-centric defaults. Write in clean markdown with the section headers requested.`;
 
     const language = req.body.language || req.headers['x-language'] || 'en';
-    const content = await geminiChat(prompt, system, { language });
+    const content = await openaiChat(prompt, system, { language, temperature: 0.8 });
 
     res.json({
       success: true,

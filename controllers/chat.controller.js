@@ -38,15 +38,26 @@ exports.getSession = async (req, res) => {
 
 exports.sendMessage = async (req, res) => {
   try {
-    const { message, sessionId } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message required' });
+    const { message, sessionId, imageData } = req.body;
+    if (!message && !imageData) return res.status(400).json({ error: 'Message required' });
 
-    // Pick up the user's UI language — body wins, X-Language header is fallback
     const language = req.body.language || req.headers['x-language'] || 'en';
 
-    // Sanitize message to prevent prompt injection
-    const cleanMessage = sanitizeInputs({ message }).message || '';
-    if (!cleanMessage) return res.status(400).json({ error: 'Message required' });
+    // Sanitize text message
+    const rawText = message || '';
+    const cleanMessage = sanitizeInputs({ message: rawText }).message || '';
+
+    // Build message content — support image uploads
+    let messageContent = cleanMessage;
+    if (imageData) {
+      // imageData is base64 string from frontend
+      // DeepSeek Chat V3 supports vision — attach image description to context
+      messageContent = cleanMessage
+        ? `${cleanMessage}\n\n[User attached an image for analysis]`
+        : '[User attached an image for analysis]';
+    }
+
+    if (!messageContent) return res.status(400).json({ error: 'Message required' });
 
     let session;
     if (sessionId) {
@@ -56,9 +67,13 @@ exports.sendMessage = async (req, res) => {
       session = await ChatSession.create({ user: req.user._id, messages: [] });
     }
 
-    session.messages.push({ role: 'user', content: cleanMessage });
+    session.messages.push({ role: 'user', content: messageContent });
 
-    const chatHistory = session.messages.slice(-20).map(m => ({ role: m.role, content: m.content }));
+    // Keep last 20 messages for context
+    const chatHistory = session.messages.slice(-20).map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');

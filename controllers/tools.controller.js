@@ -34,6 +34,7 @@ const TOOL_LABELS = {
   website_creation: 'Website Creator', sales_script: 'Sales Script',
 };
 
+/* ── Standard tool generate ── */
 exports.generate = async (req, res) => {
   try {
     const { toolType, inputs } = req.body;
@@ -55,6 +56,33 @@ exports.generate = async (req, res) => {
   } catch (err) {
     console.error('Tool generate error:', err);
     res.status(500).json({ error: 'Generation failed. Please try again.' });
+  }
+};
+
+/* ── IMAGE GENERATION — xAI Grok Aurora ── */
+exports.generateImage = async (req, res) => {
+  try {
+    const { prompt, size, n } = req.body;
+    if (!prompt || prompt.trim().length < 3) {
+      return res.status(400).json({ error: 'Image prompt is required' });
+    }
+
+    const cleanPrompt = String(prompt).trim().slice(0, 1000);
+    const imageUrls = await aiService.generateImageFromText(cleanPrompt, {
+      size: size || '1024x1024',
+      n: Math.min(n || 1, 4),
+    });
+
+    await User.findByIdAndUpdate(req.user._id, { $inc: { 'usage.reportsGenerated': 1 } });
+
+    res.json({ success: true, images: imageUrls, prompt: cleanPrompt });
+  } catch (err) {
+    console.error('Image generation error:', err);
+    // Give a meaningful error if xAI key is missing
+    if (err.message?.includes('XAI_API_KEY')) {
+      return res.status(503).json({ error: 'Image generation is not configured on this server.' });
+    }
+    res.status(500).json({ error: 'Image generation failed. Please try again.' });
   }
 };
 
@@ -100,7 +128,6 @@ exports.getReports = async (req, res) => {
     const { type } = req.query;
     const filter = {
       user: req.user._id,
-      // Only show tool reports — exclude Launch Package reports (they're shown via the package page)
       $or: [
         { 'inputs.fromPackage': { $ne: true } },
         { 'inputs.fromPackage': { $exists: false } },
