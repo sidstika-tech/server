@@ -4,7 +4,7 @@ const OpenAI = require('openai');
 /* ══════════════════════════════════════════════════════════════════
    THREE AI CLIENTS — each used for what it does best
 
-   1. OpenRouter (Claude 3.5 Sonnet) → Business DNA + Launch Package
+   1.\ + Launch Package
       Deep psychological reading, structured JSON, multi-step reasoning
       Env: OPENROUTER_API_KEY
 
@@ -20,7 +20,7 @@ const OpenAI = require('openai');
 // ── GEMINI ──
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ── OPENROUTER (Claude 3.5 Sonnet via OpenAI-compatible API) ──
+//\
 let _openrouterClient = null;
 function getOpenRouter() {
   if (_openrouterClient) return _openrouterClient;
