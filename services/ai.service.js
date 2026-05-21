@@ -1,5 +1,6 @@
 const Groq = require('groq-sdk');
 const { geminiChat, MASTER_IDENTITY } = require('./gemini.service');
+const OpenAI = require('openai');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
@@ -781,7 +782,7 @@ function applyFallbackEdits(template, inputs) {
   // Replace bracketed placeholders like {{BRAND_NAME}} or [BRAND_NAME] if present
   html = html
     .replace(/\{\{\s*BRAND_NAME\s*\}\}/g, name)
-    .replace(/\{\{\s*BUSINESS_NAME\s*\}\}/g, name)
+    .replace(/\{\{\s*PROJECT_NAME\s*\}\}/g, name)
     .replace(/\{\{\s*COMPANY_NAME\s*\}\}/g, name)
     .replace(/\[BRAND_NAME\]/g, name)
     .replace(/\[BUSINESS_NAME\]/g, name);
@@ -848,7 +849,7 @@ ${template}
 End your output with </html>. Nothing else after.`;
 
   try {
-    const raw = await geminiChat(
+    const raw = await openaiChat(
       editPrompt,
       `You are an expert web developer who edits HTML templates to match specific brands. You output ONLY clean HTML — no markdown, no chatter. Preserve structure, edit content.`,
       { temperature: 0.5, topP: 0.95, language: inputs.language }
@@ -869,7 +870,7 @@ End your output with </html>. Nothing else after.`;
     // 4. Sanity check — must be at least 80% of original template length
     //    (Gemini sometimes truncates if context window is tight)
     if (html.length < template.length * 0.5) {
-      console.warn('Gemini output truncated, using fallback');
+      console.warn('Openai output truncated, using fallback');
       return applyFallbackEdits(template, inputs);
     }
 
