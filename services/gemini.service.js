@@ -4,8 +4,6 @@ const OpenAI = require('openai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // OpenAI client — initialized lazily so the app still boots if the key is missing.
-// Used by the Business DNA "Psychological Architect" prompt, which benefits from
-// GPT's stronger multi-step reasoning. All other generators stay on Gemini for cost.
 let _openaiClient = null;
 function getOpenAI() {
   if (_openaiClient) return _openaiClient;
@@ -15,6 +13,8 @@ function getOpenAI() {
   _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   return _openaiClient;
 }
+
+// OpenRouter client — initialized lazily, same pattern as OpenAI.
 let _openrouterClient = null;
 function getOpenRouter() {
   if (_openrouterClient) return _openrouterClient;
@@ -25,12 +25,13 @@ function getOpenRouter() {
     apiKey: process.env.OPENROUTER_API_KEY,
     baseURL: 'https://openrouter.ai/api/v1',
     defaultHeaders: {
-      'HTTP-Referer': process.env.APP_URL || 'https://doubleeight.online', // optional but recommended by OpenRouter
-      'X-Title': 'Double Eight AI',                                    // optional, shows in OpenRouter dashboard
+      'HTTP-Referer': process.env.APP_URL || 'https://doubleeight.online',
+      'X-Title': 'Double Eight AI',
     },
   });
   return _openrouterClient;
 }
+
 const MASTER_IDENTITY = `You are the AI core of Double Eight AI — the first business intelligence platform built for Arab and MENA entrepreneurs.
 
 Your users are:
@@ -50,16 +51,9 @@ When you know their country, always use their specific market, currency, regulat
 
 /* ──────────────────────────────────────────────────────────────────
    RETRY HELPER
-   Gemini occasionally:
-   - Times out on cold start
-   - Returns 503 "model overloaded"
-   - Returns malformed JSON
-   Without retry, the FIRST attempt fails ~10-20% of the time and
-   users have to click "retry" manually. Auto-retry makes it invisible.
 ──────────────────────────────────────────────────────────────────── */
 function isTransientError(err) {
   const msg = (err?.message || '').toLowerCase();
-  // 503 overload, timeouts, network errors, JSON parse errors — all retryable
   return /503|overload|unavailable|timeout|timed out|fetch failed|network|econn|deadline|json|unexpected token/i.test(msg);
 }
 
@@ -74,12 +68,11 @@ async function withRetry(fn, { tries = 3, baseDelay = 700, label = 'gemini' } = 
       return await fn();
     } catch (err) {
       lastErr = err;
-      // Don't retry rate-limit (429 quota) errors — that's a real wall, not transient
       if (/429|quota|rate.?limit|exhausted/i.test(err?.message || '')) {
         throw err;
       }
       if (i < tries - 1 && isTransientError(err)) {
-        const wait = baseDelay * Math.pow(2, i);   // 700ms, 1400ms, 2800ms…
+        const wait = baseDelay * Math.pow(2, i);
         console.warn(`[${label}] attempt ${i + 1} failed (${err.message?.slice(0, 80)}). Retrying in ${wait}ms`);
         await delay(wait);
         continue;
@@ -91,11 +84,10 @@ async function withRetry(fn, { tries = 3, baseDelay = 700, label = 'gemini' } = 
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   GEMINI CHAT — with built-in retry
+   GEMINI CHAT
 ──────────────────────────────────────────────────────────────────── */
 async function geminiChat(prompt, systemInstruction, options) {
   return withRetry(async () => {
-    // Auto-inject Arabic directive if caller passes language='ar' in options
     let effectiveSystem = systemInstruction || MASTER_IDENTITY;
     let effectivePrompt = prompt;
     if (options && options.language === 'ar') {
@@ -119,10 +111,6 @@ async function geminiChat(prompt, systemInstruction, options) {
 
 /* ──────────────────────────────────────────────────────────────────
    DAILY ACADEMY NEWS — MENA-only edition
-   Three cards every day, all focused on the MENA region:
-     Card 1 — MENA MARKETS (Tadawul, ADX, DFM, EGX, oil, regional currencies)
-     Card 2 — MENA SUCCESS STORY (an Arab founder, recent achievement)
-     Card 3 — MENA OPPORTUNITY (active trend or program a MENA entrepreneur can act on this week)
 ──────────────────────────────────────────────────────────────────── */
 async function generateAcademyDaily() {
   return withRetry(async () => {
@@ -249,13 +237,7 @@ Return ONLY this exact JSON shape (no markdown, no commentary):
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   OPENAI CHAT — drop-in replacement for geminiChat
-   Same signature: openaiChat(prompt, systemInstruction, options)
-   - Uses GPT for better multi-step reasoning on complex prompts
-   - Auto-injects Arabic directive when options.language === 'ar'
-   - Honors options.json to force valid JSON output
-   - Has the same retry/backoff behavior as geminiChat
-   - Used by the Business DNA "Psychological Architect" prompt
+   OPENAI CHAT
 ══════════════════════════════════════════════════════════════════ */
 async function openaiChat(prompt, systemInstruction, options) {
   return withRetry(async () => {
@@ -271,12 +253,29 @@ async function openaiChat(prompt, systemInstruction, options) {
     ];
 
     const params = {
-      model: (options && options.model) || 'gpt-5.4-mini',
+      model: (options && options.model) || 'gpt-4o-mini',
       messages,
       temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
       top_p: (options && options.topP !== undefined) ? options.topP : 0.95,
       max_completion_tokens: (options && options.max_completion_tokens) || 4096,
     };
+
+    if (options && options.json) {
+      params.response_format = { type: 'json_object' };
+    }
+
+    const completion = await client.chat.completions.create(params);
+    return completion.choices?.[0]?.message?.content || '';
+  }, { tries: 3, baseDelay: 700, label: 'openaiChat' });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   OPENROUTER CHAT
+   - Same signature as geminiChat / openaiChat
+   - Pass any OpenRouter model via options.model
+     e.g. 'anthropic/claude-sonnet-4-5', 'meta-llama/llama-3.1-70b-instruct'
+   - Default: google/gemini-2.5-flash (cost-efficient, familiar)
+══════════════════════════════════════════════════════════════════ */
 async function openrouterChat(prompt, systemInstruction, options) {
   return withRetry(async () => {
     const client = getOpenRouter();
@@ -291,7 +290,7 @@ async function openrouterChat(prompt, systemInstruction, options) {
     ];
 
     const params = {
-      model: (options && options.model) || 'anthropic/claude-3.5-sonnet',  // default — any OpenRouter model ID works here
+      model: (options && options.model) || 'anthropic/claude-3.5-sonnet',
       messages,
       temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
       top_p: (options && options.topP !== undefined) ? options.topP : 0.95,
@@ -305,16 +304,6 @@ async function openrouterChat(prompt, systemInstruction, options) {
     const completion = await client.chat.completions.create(params);
     return completion.choices?.[0]?.message?.content || '';
   }, { tries: 3, baseDelay: 700, label: 'openrouterChat' });
-}
-    // Force JSON output when requested — eliminates markdown wrapping issues
-    if (options && options.json) {
-      params.response_format = { type: 'json_object' };
-    }
-
-    const completion = await client.chat.completions.create(params);
-    const text = completion.choices?.[0]?.message?.content || '';
-    return text;
-  }, { tries: 3, baseDelay: 700, label: 'openaiChat' });
 }
 
 module.exports = { geminiChat, openaiChat, openrouterChat, generateAcademyDaily, MASTER_IDENTITY };
