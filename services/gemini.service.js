@@ -236,19 +236,34 @@ async function geminiChat(prompt, systemInstruction, options) {
 
 /* ══════════════════════════════════════════════════════════════════
    5. IMAGE GENERATION — x-ai/grok-imagine-image-quality via OpenRouter
+   Uses /v1/chat/completions with modalities: ["image", "text"]
+   Response comes back as base64 data URLs in message.images[].image_url.url
    Used by: tools.controller image_generation handler
 ══════════════════════════════════════════════════════════════════ */
 async function generateImage(prompt, options = {}) {
   return withRetry(async () => {
     const client = getOpenRouter();
-    const response = await client.images.generate({
-      model: 'x-ai/grok-imagine-image-quality',
-      prompt: prompt,
-      n: options.n || 1,
-      size: options.size || '1024x1024',
-    });
-    // Return array of image URLs
-    return response.data.map(img => img.url || img.b64_json);
+    const n = options.n || 1;
+    const imageUrls = [];
+
+    for (let i = 0; i < n; i++) {
+      const response = await client.chat.completions.create({
+        model: 'x-ai/grok-imagine-image-quality',
+        messages: [{ role: 'user', content: prompt }],
+        modalities: ['image', 'text'],
+      });
+
+      const message = response.choices?.[0]?.message;
+
+      if (message?.images?.length) {
+        message.images.forEach(image => {
+          if (image.image_url?.url) imageUrls.push(image.image_url.url);
+        });
+      }
+    }
+
+    if (!imageUrls.length) throw new Error('No images returned from model');
+    return imageUrls;
   }, { tries: 2, baseDelay: 1000, label: 'imageGen' });
 }
 
