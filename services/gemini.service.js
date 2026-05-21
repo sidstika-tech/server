@@ -260,7 +260,7 @@ async function openaiChat(prompt, systemInstruction, options) {
       messages,
       temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
       top_p: (options && options.topP !== undefined) ? options.topP : 0.95,
-      max_tokens: (options && options.maxTokens) || 4096,
+      max_completion_tokens: (options && options.max_completion_tokens) || 4096,
     };
 
     // Force JSON output when requested — eliminates markdown wrapping issues
