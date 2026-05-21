@@ -1,11 +1,44 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const OpenAI = require('openai');
 
+/* ══════════════════════════════════════════════════════════════════
+   THREE AI CLIENTS — each used for what it does best
+
+   1. OpenRouter (Claude 3.5 Sonnet) → Business DNA + Launch Package
+      Deep psychological reading, structured JSON, multi-step reasoning
+      Env: OPENROUTER_API_KEY
+
+   2. Gemini Flash → AI Advisor Chat + Academy sections + daily news
+      Fast, free, good for streaming and educational content
+      Env: GEMINI_API_KEY
+
+   3. OpenAI (GPT-5.4 mini) → AI Tools (14 generators)
+      Quick structured outputs, reliable JSON
+      Env: OPENAI_API_KEY
+══════════════════════════════════════════════════════════════════ */
+
+// ── GEMINI ──
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// OpenAI client — initialized lazily so the app still boots if the key is missing.
-// Used by the Business DNA "Psychological Architect" prompt, which benefits from
-// GPT's stronger multi-step reasoning. All other generators stay on Gemini for cost.
+// ── OPENROUTER (Claude 3.5 Sonnet via OpenAI-compatible API) ──
+let _openrouterClient = null;
+function getOpenRouter() {
+  if (_openrouterClient) return _openrouterClient;
+  if (!process.env.OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY is not set in environment variables');
+  }
+  _openrouterClient = new OpenAI({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
+    defaultHeaders: {
+      'HTTP-Referer': 'https://doubleeight.online',
+      'X-Title': 'Double Eight AI',
+    },
+  });
+  return _openrouterClient;
+}
+
+// ── OPENAI (GPT-5.4 mini) ──
 let _openaiClient = null;
 function getOpenAI() {
   if (_openaiClient) return _openaiClient;
@@ -16,6 +49,7 @@ function getOpenAI() {
   return _openaiClient;
 }
 
+/* ── MASTER IDENTITY — shared across all providers ── */
 const MASTER_IDENTITY = `You are the AI core of Double Eight AI — the first business intelligence platform built for Arab and MENA entrepreneurs.
 
 Your users are:
@@ -34,38 +68,20 @@ Your principles:
 When you know their country, always use their specific market, currency, regulations, local opportunities.`;
 
 /* ──────────────────────────────────────────────────────────────────
-   RETRY HELPER
-   Gemini occasionally:
-   - Times out on cold start
-   - Returns 503 "model overloaded"
-   - Returns malformed JSON
-   Without retry, the FIRST attempt fails ~10-20% of the time and
-   users have to click "retry" manually. Auto-retry makes it invisible.
+   RETRY HELPER — shared across all providers
 ──────────────────────────────────────────────────────────────────── */
-function isTransientError(err) {
-  const msg = (err?.message || '').toLowerCase();
-  // 503 overload, timeouts, network errors, JSON parse errors — all retryable
-  return /503|overload|unavailable|timeout|timed out|fetch failed|network|econn|deadline|json|unexpected token/i.test(msg);
-}
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function delay(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
-
-async function withRetry(fn, { tries = 3, baseDelay = 700, label = 'gemini' } = {}) {
+async function withRetry(fn, { tries = 3, baseDelay = 700, label = 'ai' } = {}) {
   let lastErr;
   for (let i = 0; i < tries; i++) {
-    try {
-      return await fn();
-    } catch (err) {
+    try { return await fn(); }
+    catch (err) {
       lastErr = err;
-      // Don't retry rate-limit (429 quota) errors — that's a real wall, not transient
-      if (/429|quota|rate.?limit|exhausted/i.test(err?.message || '')) {
-        throw err;
-      }
-      if (i < tries - 1 && isTransientError(err)) {
-        const wait = baseDelay * Math.pow(2, i);   // 700ms, 1400ms, 2800ms…
-        console.warn(`[${label}] attempt ${i + 1} failed (${err.message?.slice(0, 80)}). Retrying in ${wait}ms`);
+      if (/429|quota|rate.?limit|exhausted/i.test(err?.message || '')) throw err;
+      if (i < tries - 1) {
+        const wait = baseDelay * Math.pow(2, i);
+        console.warn(`[${label}] attempt ${i + 1} failed (${(err.message || '').slice(0, 80)}). Retrying in ${wait}ms`);
         await delay(wait);
         continue;
       }
@@ -75,40 +91,106 @@ async function withRetry(fn, { tries = 3, baseDelay = 700, label = 'gemini' } = 
   throw lastErr;
 }
 
-/* ──────────────────────────────────────────────────────────────────
-   GEMINI CHAT — with built-in retry
-──────────────────────────────────────────────────────────────────── */
+/* ── Arabic injection helper ── */
+function arabicDirective(lang) {
+  if (lang !== 'ar') return '';
+  return `\n\nCRITICAL LANGUAGE REQUIREMENT: Write your ENTIRE response in Modern Standard Arabic (الفصحى). Keep proper nouns in their original language. Do NOT respond in English under any circumstances.`;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   1. GEMINI CHAT — for AI Advisor Chat + Academy
+   Used by: chat.controller (via ai.service streamChat), academy.controller
+══════════════════════════════════════════════════════════════════ */
 async function geminiChat(prompt, systemInstruction, options) {
   return withRetry(async () => {
-    // Auto-inject Arabic directive if caller passes language='ar' in options
-    let effectiveSystem = systemInstruction || MASTER_IDENTITY;
-    let effectivePrompt = prompt;
-    if (options && options.language === 'ar') {
-      effectiveSystem += `\n\nCRITICAL LANGUAGE REQUIREMENT: The user reading this is in Arabic mode. Write your ENTIRE response in Modern Standard Arabic (الفصحى). Include all section headers, bullets, and analysis in Arabic. Keep proper nouns (brand names, country names in some cases, URLs) in their original language. Use Arabic numerals only when natural; Western numerals are fine for currency and dates. Do NOT respond in English under any circumstances.`;
-      effectivePrompt = `[OUTPUT LANGUAGE: ARABIC — write the entire response in Arabic]\n\n${prompt}`;
+    let sys = systemInstruction || MASTER_IDENTITY;
+    let p = prompt;
+    if (options?.language === 'ar') {
+      sys += arabicDirective('ar');
+      p = `[OUTPUT LANGUAGE: ARABIC]\n\n${prompt}`;
     }
-
     const model = genAI.getGenerativeModel({
-      model: (options && options.model) || 'gemini-2.5-flash',
-      systemInstruction: effectiveSystem,
+      model: options?.model || 'gemini-2.5-flash',
+      systemInstruction: sys,
       generationConfig: {
-        temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
-        topP: (options && options.topP !== undefined) ? options.topP : 0.95,
-        ...(options && options.json ? { responseMimeType: 'application/json' } : {}),
+        temperature: options?.temperature ?? 0.7,
+        topP: options?.topP ?? 0.95,
+        ...(options?.json ? { responseMimeType: 'application/json' } : {}),
       },
     });
-    const result = await model.generateContent(effectivePrompt);
+    const result = await model.generateContent(p);
     return result.response.text();
   }, { tries: 3, baseDelay: 700, label: 'geminiChat' });
 }
 
-/* ──────────────────────────────────────────────────────────────────
-   DAILY ACADEMY NEWS — MENA-only edition
-   Three cards every day, all focused on the MENA region:
-     Card 1 — MENA MARKETS (Tadawul, ADX, DFM, EGX, oil, regional currencies)
-     Card 2 — MENA SUCCESS STORY (an Arab founder, recent achievement)
-     Card 3 — MENA OPPORTUNITY (active trend or program a MENA entrepreneur can act on this week)
-──────────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   2. OPENROUTER CHAT (Claude 3.5 Sonnet) — for DNA + Launch Package
+   Used by: businessDNA.controller, launchPackage.controller (via ai.service generators)
+══════════════════════════════════════════════════════════════════ */
+async function openrouterChat(prompt, systemInstruction, options) {
+  return withRetry(async () => {
+    const client = getOpenRouter();
+    let sysMsg = systemInstruction || MASTER_IDENTITY;
+    if (options?.language === 'ar') sysMsg += arabicDirective('ar');
+
+    const messages = [
+      { role: 'system', content: sysMsg },
+      { role: 'user', content: prompt },
+    ];
+
+    const params = {
+      model: options?.model || 'anthropic/claude-3.5-sonnet',
+      messages,
+      temperature: options?.temperature ?? 0.7,
+      top_p: options?.topP ?? 0.95,
+      max_tokens: options?.maxTokens || 4096,
+    };
+
+    if (options?.json) {
+      // Claude supports JSON mode via system prompt instruction
+      messages[0].content += '\n\nReturn ONLY valid JSON. No markdown, no backticks, no commentary.';
+    }
+
+    const completion = await client.chat.completions.create(params);
+    return completion.choices?.[0]?.message?.content || '';
+  }, { tries: 3, baseDelay: 700, label: 'openrouterChat' });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   3. OPENAI CHAT (GPT-5.4 mini) — for AI Tools (14 generators)
+   Used by: ai.service.js generators (brand kit, business plan, SEO, etc.)
+══════════════════════════════════════════════════════════════════ */
+async function openaiChat(prompt, systemInstruction, options) {
+  return withRetry(async () => {
+    const client = getOpenAI();
+    let sysMsg = systemInstruction || MASTER_IDENTITY;
+    if (options?.language === 'ar') sysMsg += arabicDirective('ar');
+
+    const messages = [
+      { role: 'system', content: sysMsg },
+      { role: 'user', content: prompt },
+    ];
+
+    const params = {
+      model: options?.model || 'gpt-4o-mini',
+      messages,
+      temperature: options?.temperature ?? 0.7,
+      top_p: options?.topP ?? 0.95,
+      max_tokens: options?.maxTokens || 4096,
+    };
+
+    if (options?.json) {
+      params.response_format = { type: 'json_object' };
+    }
+
+    const completion = await client.chat.completions.create(params);
+    return completion.choices?.[0]?.message?.content || '';
+  }, { tries: 3, baseDelay: 700, label: 'openaiChat' });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DAILY ACADEMY NEWS — uses Gemini (free)
+══════════════════════════════════════════════════════════════════ */
 async function generateAcademyDaily() {
   return withRetry(async () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -120,112 +202,39 @@ You are the daily intelligence curator for Double Eight AI — a platform used E
 
 GENERATE EXACTLY 3 BUSINESS INTELLIGENCE CARDS, ALL FOCUSED ON MENA.
 
-The 3 cards must follow this structure:
-
 ═══ CARD 1 — MENA MARKETS / ECONOMY ═══
-Subject: A real movement happening this week in MENA markets, currencies, commodities, or regional economies.
-Examples of valid topics:
-  • Saudi Tadawul (TASI), UAE ADX or DFM, Egyptian EGX, Qatar QE, Kuwait Boursa moves
-  • Oil/gas prices and what they mean for Gulf budgets
-  • Egyptian pound, Lebanese lira, Turkish lira movements affecting MENA trade
-  • SAMA, CBUAE, CBE interest rate decisions
-  • Vision 2030 / Vision 2031 spending announcements
-  • Gulf real estate, hospitality, retail trends
-INVALID: US Federal Reserve, S&P 500, Bitcoin alone, European markets. STAY MENA.
-Country: pick the specific MENA country most affected (Saudi Arabia, UAE, Egypt, Qatar, Kuwait, Bahrain, Oman, Jordan, Morocco, Lebanon).
+Subject: A real movement this week in MENA markets, currencies, commodities, or regional economies.
+Valid topics: Saudi Tadawul, UAE ADX/DFM, Egyptian EGX, Qatar QE, Kuwait Boursa, oil/gas, SAMA/CBUAE/CBE decisions, Vision 2030.
+INVALID: US markets, S&P 500, Bitcoin alone, European markets. STAY MENA.
+Country: pick a specific MENA country.
 
 ═══ CARD 2 — MENA FOUNDER SUCCESS STORY ═══
-Subject: A real Arab founder or MENA-based founder who has had a measurable success recently — a funding round, a product launch, an acquisition, an expansion, or a milestone.
+Subject: A real Arab/MENA-based founder with a measurable recent success.
 Pick from MENA only — Saudi, UAE, Egyptian, Jordanian, Lebanese, Moroccan, Qatari, Kuwaiti, Bahraini, Omani founders.
-Examples of valid founders/companies: Talabat, Careem, Anghami, Tabby, Tamara, Swvl, Property Finder, Kitopi, Trella, MaxAB, Halan, Vezeeta, EduSpark, Yamsafer, Mrsool, Nana, Jahez, Sary, Foodics, Eyewa, Aramex spin-offs, etc.
-The lesson should be transferable — what can a MENA entrepreneur reading this STEAL from their story?
 
 ═══ CARD 3 — MENA OPPORTUNITY THIS WEEK ═══
-Subject: A trend, government program, grant, accelerator deadline, regulatory change, or market gap that a MENA entrepreneur can ACT on within the next 7 days.
-Examples of valid opportunities:
-  • Saudi Monsha'at, Misk, NTDP programs and current calls
-  • UAE Hub71 cohort applications, Dubai Future Accelerators, Dubai SME programs
-  • Egypt's startup grants, Misr Digital Innovation, Flat6Labs cohorts
-  • Qatar Development Bank programs, QFC opportunities
-  • Trending consumer behaviors in MENA (Ramadan/Eid commerce timing, summer GCC travel patterns)
-  • Saudization (Nitaqat), Emiratisation hiring incentives entrepreneurs can leverage
-  • E-commerce regulation changes in MENA countries
-Pick a DIFFERENT MENA country from Cards 1 and 2 if possible.
+Subject: A trend, program, grant, accelerator, or market gap a MENA entrepreneur can ACT on within 7 days.
 
-═══ CRITICAL OUTPUT RULES ═══
+═══ RULES ═══
+1. ALL 3 cards MUST be MENA. Zero exceptions.
+2. Real source URLs from: arabnews.com, gulfnews.com, thenationalnews.com, zawya.com, forbesmiddleeast.com, menabytes.com, wamda.com, gulfbusiness.com, argaam.com
+3. countryFlag must match (🇸🇦 🇦🇪 🇪🇬 🇶🇦 🇰🇼 🇧🇭 🇴🇲 🇯🇴 🇲🇦 🇱🇧)
+4. "opportunity" must be ONE concrete action this week
 
-1. ALL 3 cards MUST be MENA. Zero exceptions. No US, no Europe, no Asia.
-2. Each card needs a real, working source URL from MENA-credible publishers:
-   - https://www.arabnews.com  (Saudi)
-   - https://gulfnews.com  (UAE)
-   - https://www.thenationalnews.com  (UAE)
-   - https://www.zawya.com  (Pan-MENA business)
-   - https://www.forbesmiddleeast.com
-   - https://www.menabytes.com  (MENA startup news)
-   - https://www.wamda.com  (MENA startup ecosystem)
-   - https://www.al-monitor.com
-   - https://www.gulfbusiness.com
-   - https://english.aawsat.com  (Asharq Al-Awsat)
-   - https://www.argaam.com  (Saudi business)
-   - https://www.tradingeconomics.com
-3. countryFlag must match the country emoji exactly (🇸🇦 🇦🇪 🇪🇬 🇶🇦 🇰🇼 🇧🇭 🇴🇲 🇯🇴 🇲🇦 🇱🇧).
-4. "opportunity" must be ONE concrete action a reader can take this week — not "stay informed" or "watch the market". Real verbs, real actions.
-
-Return ONLY this exact JSON shape (no markdown, no commentary):
-
+Return ONLY this JSON:
 {
   "cards": [
-    {
-      "id": "card1",
-      "type": "market",
-      "icon": "📈",
-      "country": "<MENA country>",
-      "countryFlag": "<flag emoji>",
-      "category": "MENA Markets",
-      "title": "<under 12 words, specific>",
-      "summary": "<2 sentences: what happened + why a MENA entrepreneur should care>",
-      "opportunity": "<one concrete action this week>",
-      "source": "<publisher name>",
-      "sourceUrl": "<real MENA-credible URL>"
-    },
-    {
-      "id": "card2",
-      "type": "success",
-      "icon": "🏆",
-      "country": "<different MENA country>",
-      "countryFlag": "<flag emoji>",
-      "category": "MENA Founder Story",
-      "title": "<under 12 words about the founder/company>",
-      "summary": "<2 sentences telling the story + the transferable lesson>",
-      "opportunity": "<the specific tactic, principle, or move the reader can steal this week>",
-      "source": "<publisher name>",
-      "sourceUrl": "<real MENA-credible URL>"
-    },
-    {
-      "id": "card3",
-      "type": "opportunity",
-      "icon": "🚀",
-      "country": "<another MENA country>",
-      "countryFlag": "<flag emoji>",
-      "category": "MENA Opportunity",
-      "title": "<under 12 words on the opportunity>",
-      "summary": "<2 sentences: the opportunity + who exactly it fits>",
-      "opportunity": "<the specific action to take in the next 7 days>",
-      "source": "<publisher name>",
-      "sourceUrl": "<real MENA-credible URL>"
-    }
+    {"id":"card1","type":"market","icon":"📈","country":"<MENA>","countryFlag":"<emoji>","category":"MENA Markets","title":"<12 words>","summary":"<2 sentences>","opportunity":"<action>","source":"<name>","sourceUrl":"<url>"},
+    {"id":"card2","type":"success","icon":"🏆","country":"<MENA>","countryFlag":"<emoji>","category":"MENA Founder Story","title":"<12 words>","summary":"<2 sentences>","opportunity":"<tactic to steal>","source":"<name>","sourceUrl":"<url>"},
+    {"id":"card3","type":"opportunity","icon":"🚀","country":"<MENA>","countryFlag":"<emoji>","category":"MENA Opportunity","title":"<12 words>","summary":"<2 sentences>","opportunity":"<action in 7 days>","source":"<name>","sourceUrl":"<url>"}
   ],
   "generatedAt": "${today}"
 }`;
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: 'You are the daily intelligence curator for Double Eight AI. Every output is MENA-only. You never recommend or reference non-MENA markets, founders, or opportunities. You return ONLY valid JSON — no markdown, no backticks, no commentary.',
-      generationConfig: {
-        temperature: 0.8,
-        topP: 0.95,
-        responseMimeType: 'application/json',
-      },
+      systemInstruction: 'You are the daily intelligence curator for Double Eight AI. Every output is MENA-only. Return ONLY valid JSON.',
+      generationConfig: { temperature: 0.8, topP: 0.95, responseMimeType: 'application/json' },
     });
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
@@ -233,45 +242,4 @@ Return ONLY this exact JSON shape (no markdown, no commentary):
   }, { tries: 3, baseDelay: 800, label: 'academyDaily' });
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   OPENAI CHAT — drop-in replacement for geminiChat
-   Same signature: openaiChat(prompt, systemInstruction, options)
-   - Uses GPT for better multi-step reasoning on complex prompts
-   - Auto-injects Arabic directive when options.language === 'ar'
-   - Honors options.json to force valid JSON output
-   - Has the same retry/backoff behavior as geminiChat
-   - Used by the Business DNA "Psychological Architect" prompt
-══════════════════════════════════════════════════════════════════ */
-async function openaiChat(prompt, systemInstruction, options) {
-  return withRetry(async () => {
-    const client = getOpenAI();
-    let sysMsg = systemInstruction || MASTER_IDENTITY;
-    if (options && options.language === 'ar') {
-      sysMsg += `\n\nCRITICAL LANGUAGE REQUIREMENT: The user reading this is in Arabic mode. Write your ENTIRE response in Modern Standard Arabic (الفصحى). Keep proper nouns (brand names, country names where natural, URLs) in their original language. Do NOT respond in English under any circumstances.`;
-    }
-
-    const messages = [
-      { role: 'system', content: sysMsg },
-      { role: 'user', content: prompt },
-    ];
-
-    const params = {
-      model: (options && options.model) || 'gpt-4o-mini',
-      messages,
-      temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
-      top_p: (options && options.topP !== undefined) ? options.topP : 0.95,
-      max_tokens: (options && options.maxTokens) || 4096,
-    };
-
-    // Force JSON output when requested — eliminates markdown wrapping issues
-    if (options && options.json) {
-      params.response_format = { type: 'json_object' };
-    }
-
-    const completion = await client.chat.completions.create(params);
-    const text = completion.choices?.[0]?.message?.content || '';
-    return text;
-  }, { tries: 3, baseDelay: 700, label: 'openaiChat' });
-}
-
-module.exports = { geminiChat, openaiChat, generateAcademyDaily, MASTER_IDENTITY };
+module.exports = { geminiChat, openrouterChat, openaiChat, generateAcademyDaily, MASTER_IDENTITY };
