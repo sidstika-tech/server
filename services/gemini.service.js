@@ -1,5 +1,20 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const OpenAI = require('openai');
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// OpenAI client — initialized lazily so the app still boots if the key is missing.
+// Used by the Business DNA "Psychological Architect" prompt, which benefits from
+// GPT's stronger multi-step reasoning. All other generators stay on Gemini for cost.
+let _openaiClient = null;
+function getOpenAI() {
+  if (_openaiClient) return _openaiClient;
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY is not set in environment variables');
+  }
+  _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _openaiClient;
+}
 
 const MASTER_IDENTITY = `You are the AI core of Double Eight AI — the first business intelligence platform built for Arab and MENA entrepreneurs.
 
@@ -74,7 +89,7 @@ async function geminiChat(prompt, systemInstruction, options) {
     }
 
     const model = genAI.getGenerativeModel({
-      model: (options && options.model) || 'gemini-3.5-flash',
+      model: (options && options.model) || 'gemini-2.5-flash',
       systemInstruction: effectiveSystem,
       generationConfig: {
         temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
@@ -204,7 +219,7 @@ Return ONLY this exact JSON shape (no markdown, no commentary):
 }`;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-2.5-flash',
       systemInstruction: 'You are the daily intelligence curator for Double Eight AI. Every output is MENA-only. You never recommend or reference non-MENA markets, founders, or opportunities. You return ONLY valid JSON — no markdown, no backticks, no commentary.',
       generationConfig: {
         temperature: 0.8,
@@ -218,4 +233,45 @@ Return ONLY this exact JSON shape (no markdown, no commentary):
   }, { tries: 3, baseDelay: 800, label: 'academyDaily' });
 }
 
-module.exports = { geminiChat, generateAcademyDaily, MASTER_IDENTITY };
+/* ══════════════════════════════════════════════════════════════════
+   OPENAI CHAT — drop-in replacement for geminiChat
+   Same signature: openaiChat(prompt, systemInstruction, options)
+   - Uses GPT for better multi-step reasoning on complex prompts
+   - Auto-injects Arabic directive when options.language === 'ar'
+   - Honors options.json to force valid JSON output
+   - Has the same retry/backoff behavior as geminiChat
+   - Used by the Business DNA "Psychological Architect" prompt
+══════════════════════════════════════════════════════════════════ */
+async function openaiChat(prompt, systemInstruction, options) {
+  return withRetry(async () => {
+    const client = getOpenAI();
+    let sysMsg = systemInstruction || MASTER_IDENTITY;
+    if (options && options.language === 'ar') {
+      sysMsg += `\n\nCRITICAL LANGUAGE REQUIREMENT: The user reading this is in Arabic mode. Write your ENTIRE response in Modern Standard Arabic (الفصحى). Keep proper nouns (brand names, country names where natural, URLs) in their original language. Do NOT respond in English under any circumstances.`;
+    }
+
+    const messages = [
+      { role: 'system', content: sysMsg },
+      { role: 'user', content: prompt },
+    ];
+
+    const params = {
+      model: (options && options.model) || 'gpt-5.4-mini',
+      messages,
+      temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
+      top_p: (options && options.topP !== undefined) ? options.topP : 0.95,
+      max_tokens: (options && options.maxTokens) || 4096,
+    };
+
+    // Force JSON output when requested — eliminates markdown wrapping issues
+    if (options && options.json) {
+      params.response_format = { type: 'json_object' };
+    }
+
+    const completion = await client.chat.completions.create(params);
+    const text = completion.choices?.[0]?.message?.content || '';
+    return text;
+  }, { tries: 3, baseDelay: 700, label: 'openaiChat' });
+}
+
+module.exports = { geminiChat, openaiChat, generateAcademyDaily, MASTER_IDENTITY };
