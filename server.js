@@ -19,25 +19,46 @@ const aiLimiter = rateLimit({ windowMs:60*1000, max:20, message:{error:'AI rate 
 
 /* ── CORS ──
    Production: explicit allow-list. Development: permissive (any localhost / file://).
-   To allow extra production origins, set EXTRA_ORIGINS env var as a comma-separated list. */
+   To allow extra production origins, set EXTRA_ORIGINS env var as a comma-separated list.
+   IMPORTANT: We NEVER throw on unknown origin — throwing causes the cors package
+   to skip sending CORS headers entirely, which produces the exact "No
+   Access-Control-Allow-Origin header" error in the browser. Instead, we
+   reflect the origin when it matches our rules; otherwise still respond but
+   without credentials. */
 const PROD_ORIGINS = [
   'http://doubleeight.online','https://doubleeight.online',
   'http://www.doubleeight.online','https://www.doubleeight.online',
 ];
 const EXTRA_ORIGINS = (process.env.EXTRA_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+const ALL_ALLOWED = [...PROD_ORIGINS, ...EXTRA_ORIGINS];
 
-app.use(cors({
+function isAllowedOrigin(origin) {
+  if (!origin || origin === 'null') return true;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(origin)) return true;
+  if (ALL_ALLOWED.includes(origin)) return true;
+  // Allow any *.vercel.app subdomain so preview deployments work
+  if (/^https?:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) return true;
+  return false;
+}
+
+const corsOptions = {
   origin: (origin, cb) => {
-    // file:// pages send Origin: null. curl/server-to-server sends no Origin at all.
-    if (!origin || origin === 'null') return cb(null, true);
-    // Localhost / 127.0.0.1 / 0.0.0.0 on any port = dev → allow
-    if (/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(origin)) return cb(null, true);
-    // Production allow-list
-    if (PROD_ORIGINS.includes(origin) || EXTRA_ORIGINS.includes(origin)) return cb(null, true);
-    return cb(new Error('CORS blocked: ' + origin));
+    // Never throw — just decide allow or deny. Throwing strips ALL CORS headers.
+    if (isAllowedOrigin(origin)) return cb(null, true);
+    // Deny politely: tells cors to NOT add headers, response will be 200/regular
+    // but the browser will block — better than throwing a 500 with no headers at all.
+    return cb(null, false);
   },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Language', 'X-Admin-Secret', 'X-Cron-Secret'],
+  optionsSuccessStatus: 204,
+  maxAge: 86400, // cache preflight 24h
+};
+
+app.use(cors(corsOptions));
+// Explicit preflight handler — guarantees OPTIONS responses always get CORS headers
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit:'10mb' }));
 app.use(morgan('dev'));
 app.use('/api/', limiter);
@@ -61,6 +82,8 @@ const connectDB = async () => {
   }
 };
 app.use(async(req,res,next) => {
+  // Skip DB on preflight — OPTIONS requests don't touch the database
+  if (req.method === 'OPTIONS') return next();
   try { await connectDB(); next(); }
   catch(err) { res.status(500).json({ error:'Database connection failed' }); }
 });
