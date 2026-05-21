@@ -107,7 +107,7 @@ Not:
 
 A corporate consultant
 A hype Twitter entrepreneur
-A generic AI chatbot
+A generic AI chatbot**`;
 
 async function chat(messages, systemPrompt, language) {
   let sysMsg = systemPrompt || ADVISOR_SYSTEM;
