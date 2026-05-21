@@ -79,7 +79,7 @@ exports.generateImage = async (req, res) => {
   } catch (err) {
     console.error('Image generation error:', err);
     // Give a meaningful error if xAI key is missing
-    if (err.message?.includes('XAI_API_KEY')) {
+    if (err.message?.includes('XAI_API_KEY') || err.message?.includes('OPENROUTER_API_KEY')) {
       return res.status(503).json({ error: 'Image generation is not configured on this server.' });
     }
     res.status(500).json({ error: 'Image generation failed. Please try again.' });
