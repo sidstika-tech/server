@@ -74,7 +74,7 @@ async function geminiChat(prompt, systemInstruction, options) {
     }
 
     const model = genAI.getGenerativeModel({
-      model: (options && options.model) || 'gemini-2.5-flash',
+      model: (options && options.model) || 'gemini-3.5-flash',
       systemInstruction: effectiveSystem,
       generationConfig: {
         temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
@@ -204,7 +204,7 @@ Return ONLY this exact JSON shape (no markdown, no commentary):
 }`;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       systemInstruction: 'You are the daily intelligence curator for Double Eight AI. Every output is MENA-only. You never recommend or reference non-MENA markets, founders, or opportunities. You return ONLY valid JSON — no markdown, no backticks, no commentary.',
       generationConfig: {
         temperature: 0.8,
