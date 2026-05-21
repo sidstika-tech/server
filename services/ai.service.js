@@ -109,40 +109,66 @@ A corporate consultant
 A hype Twitter entrepreneur
 A generic AI chatbot]**`;
 
-async function chat(messages, systemPrompt, language) {
-  let sysMsg = systemPrompt || ADVISOR_SYSTEM;
-  if (language === 'ar') {
-    sysMsg += `\n\nCRITICAL: The user is in Arabic mode. Respond ENTIRELY in Modern Standard Arabic (الفصحى). Keep brand names, country codes, and URLs in their original language. Never respond in English.`;
-  }
-const response = await openaiChat({
-  model: MODEL,
-  messages: [{ role:'system', content:sysMsg }, ...messages],
-  temperature: 0.7,
-  max_completion_tokens: 4096
-});
+/* ══════════════════════════════════════════════════════════════════
+   OPENAI CHAT — FULL CHAT HISTORY SUPPORT
+   Production-ready wrapper for Double Eight AI
+══════════════════════════════════════════════════════════════════ */
 
-return response;
-}
+async function openaiChat(messages, systemInstruction, options = {}) {
+  return withRetry(async () => {
+    const client = getOpenAI();
 
-async function streamChat(messages, type, onChunk, language) {
-  let sysMsg = ADVISOR_SYSTEM;
-  if (language === 'ar') {
-    sysMsg += `\n\nCRITICAL: The user is in Arabic mode. Respond ENTIRELY in Modern Standard Arabic (الفصحى). Keep brand names, country codes, and URLs in their original language. Never respond in English.`;
-  }
-  const response = await openaiChat({
-  model: MODEL,
-  messages: [{ role:'system', content:sysMsg }, ...messages],
-  temperature: 0.7,
-  max_completion_tokens: 4096
+    let sysMsg = systemInstruction || MASTER_IDENTITY;
+
+    // Arabic mode support
+    if (options.language === 'ar') {
+      sysMsg += `
+      
+CRITICAL LANGUAGE REQUIREMENT:
+The user is in Arabic mode.
+Respond ENTIRELY in Modern Standard Arabic (الفصحى).
+Keep brand names, URLs, and company names in their original language.
+Never respond in English.
+`;
+    }
+
+    // Ensure messages is always an array
+    const formattedMessages = Array.isArray(messages)
+      ? messages
+      : [{ role: 'user', content: String(messages) }];
+
+    const completion = await client.chat.completions.create({
+      model: options.model || 'gpt-4.1-mini',
+
+      messages: [
+        {
+          role: 'system',
+          content: sysMsg,
+        },
+        ...formattedMessages,
+      ],
+
+      temperature:
+        options.temperature !== undefined
+          ? options.temperature
+          : 0.7,
+
+      top_p:
+        options.topP !== undefined
+          ? options.topP
+          : 0.95,
+
+      max_completion_tokens:
+        options.max_completion_tokens || 4096,
+    });
+
+    return completion.choices?.[0]?.message?.content || '';
+  }, {
+    tries: 3,
+    baseDelay: 700,
+    label: 'openaiChat',
   });
-  let full = '';
-  for await (const chunk of stream) {
-    const delta = chunk.choices[0]?.delta?.content || '';
-    if(delta) { full += delta; if(onChunk) onChunk(delta); }
-  }
-  return full;
 }
-
 /* ══════════════════════════════════════════════════════════════════
    GEMINI TOOL FUNCTIONS — MENA Psychology in every prompt
    Each prompt designed to produce output that feels:
