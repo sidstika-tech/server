@@ -2,27 +2,27 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const OpenAI = require('openai');
 
 /* ══════════════════════════════════════════════════════════════════
-   FIVE AI CLIENTS — each used for exactly what it does best
+   AI CLIENTS
 
    1. Gemini Flash 2.5     → Academy Daily News + Academy Sessions
       Fast, good for curated news and educational content
       Env: GEMINI_API_KEY
 
-   2. OpenRouter → Business DNA (Claude 3.5 Haiku)
+   2. OpenRouter → Business DNA (anthropic/claude-3-haiku)
       Deep psychological reading, structured JSON
       Env: OPENROUTER_API_KEY
 
-   3. OpenAI GPT-4o-mini   → Launch Package + Website Generator
-      + SEO/Keywords Tool + Founder Path Sessions
+   3. OpenRouter → Launch Package + Website Generator
+      + SEO/Keywords Tool + Founder Path Sessions (openai/gpt-4o-mini)
       Reliable JSON, structured documents
-      Env: OPENAI_API_KEY
+      Env: OPENROUTER_API_KEY
 
-   4. DeepSeek (via OpenAI SDK) → AI Chat Advisor
+   4. OpenRouter → AI Chat Advisor (deepseek/deepseek-chat-v3-0324)
       Strong reasoning, honest, direct — perfect for advisor role
-      Env: DEEPSEEK_API_KEY
+      Env: OPENROUTER_API_KEY
 
-   5. xAI Grok             → Image Generation (Image section)
-      Env: XAI_API_KEY
+   5. OpenRouter → Image Generation (x-ai/grok-imagine-image-quality)
+      Env: OPENROUTER_API_KEY
 ══════════════════════════════════════════════════════════════════ */
 
 // ── GEMINI ──
@@ -44,38 +44,7 @@ function getOpenRouter() {
   return _openrouterClient;
 }
 
-// ── OPENAI (GPT-4o-mini → launch package, website, SEO tool, founder path) ──
-let _openaiClient = null;
-function getOpenAI() {
-  if (_openaiClient) return _openaiClient;
-  if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not set');
-  _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return _openaiClient;
-}
-
-// ── DEEPSEEK (AI Chat Advisor — honest, direct, no fluff) ──
-let _deepseekClient = null;
-function getDeepSeek() {
-  if (_deepseekClient) return _deepseekClient;
-  if (!process.env.DEEPSEEK_API_KEY) throw new Error('DEEPSEEK_API_KEY is not set');
-  _deepseekClient = new OpenAI({
-    apiKey: process.env.DEEPSEEK_API_KEY,
-    baseURL: 'https://api.deepseek.com/v1',
-  });
-  return _deepseekClient;
-}
-
-// ── xAI Grok (Image Generation) ──
-let _xaiClient = null;
-function getXAI() {
-  if (_xaiClient) return _xaiClient;
-  if (!process.env.XAI_API_KEY) throw new Error('XAI_API_KEY is not set');
-  _xaiClient = new OpenAI({
-    apiKey: process.env.XAI_API_KEY,
-    baseURL: 'https://api.x.ai/v1',
-  });
-  return _xaiClient;
-}
+// ── OpenRouter handles: DeepSeek (Chat), Claude Haiku (DNA), GPT-4o-mini (Tools), Grok (Images) ──
 
 /* ── MASTER IDENTITY ── */
 const MASTER_IDENTITY = `You are the AI core of Double Eight AI — the first business intelligence platform built for Arab and MENA entrepreneurs.
@@ -130,7 +99,7 @@ function arabicDirective(lang) {
 ══════════════════════════════════════════════════════════════════ */
 async function deepseekChat(prompt, systemInstruction, options) {
   return withRetry(async () => {
-    const client = getDeepSeek();
+    const client = getOpenRouter();
     let sysMsg = systemInstruction || MASTER_IDENTITY;
     if (options?.language === 'ar') sysMsg += arabicDirective('ar');
 
@@ -140,7 +109,7 @@ async function deepseekChat(prompt, systemInstruction, options) {
     ];
 
     const params = {
-      model: options?.model || 'deepseek-chat',
+      model: 'deepseek/deepseek-chat-v3-0324',
       messages,
       temperature: options?.temperature ?? 0.7,
       top_p: options?.topP ?? 0.95,
@@ -159,9 +128,9 @@ async function deepseekChat(prompt, systemInstruction, options) {
 
 /* DeepSeek streaming — for the chat advisor SSE endpoint */
 async function deepseekStream(messages, systemInstruction, onChunk) {
-  const client = getDeepSeek();
+  const client = getOpenRouter();
   const params = {
-    model: 'deepseek-chat',
+    model: 'deepseek/deepseek-chat-v3-0324',
     messages: [
       { role: 'system', content: systemInstruction || MASTER_IDENTITY },
       ...messages,
@@ -197,7 +166,7 @@ async function openrouterChat(prompt, systemInstruction, options) {
     ];
 
     const params = {
-      model: options?.model || 'anthropic/claude-3-5-haiku',
+      model: options?.model || 'anthropic/claude-3-haiku',
       messages,
       temperature: options?.temperature ?? 0.9,
       top_p: options?.topP ?? 0.95,
@@ -214,7 +183,7 @@ async function openrouterChat(prompt, systemInstruction, options) {
 ══════════════════════════════════════════════════════════════════ */
 async function openaiChat(prompt, systemInstruction, options) {
   return withRetry(async () => {
-    const client = getOpenAI();
+    const client = getOpenRouter();
     let sysMsg = systemInstruction || MASTER_IDENTITY;
     if (options?.language === 'ar') sysMsg += arabicDirective('ar');
 
@@ -224,7 +193,7 @@ async function openaiChat(prompt, systemInstruction, options) {
     ];
 
     const params = {
-      model: options?.model || 'gpt-4o-mini',
+      model: 'openai/gpt-4o-mini',
       messages,
       temperature: options?.temperature ?? 0.7,
       top_p: options?.topP ?? 0.95,
@@ -266,17 +235,16 @@ async function geminiChat(prompt, systemInstruction, options) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   5. IMAGE GENERATION — xAI Grok Aurora
+   5. IMAGE GENERATION — x-ai/grok-imagine-image-quality via OpenRouter
    Used by: tools.controller image_generation handler
 ══════════════════════════════════════════════════════════════════ */
 async function generateImage(prompt, options = {}) {
   return withRetry(async () => {
-    const client = getXAI();
+    const client = getOpenRouter();
     const response = await client.images.generate({
-      model: 'grok-2-image',
+      model: 'x-ai/grok-imagine-image-quality',
       prompt: prompt,
       n: options.n || 1,
-      // xAI Aurora supports standard sizes
       size: options.size || '1024x1024',
     });
     // Return array of image URLs
