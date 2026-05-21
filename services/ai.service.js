@@ -80,12 +80,48 @@ async function streamChat(messages, type, onChunk, language) {
    - Written FOR this specific person in their specific country
    - Actionable within their actual budget and context
    - Respectful of their intelligence and ambition
+
+   ── psychProfileBlock(inputs) ──
+   If the inputs come from the Launch Package (which passes the user's
+   psychological DNA), this prepends a "THE FOUNDER YOU'RE WRITING FOR"
+   block to the prompt. Every document then reflects THEIR personality —
+   work style, motivation, risk DNA, what to avoid — making the 8
+   documents feel coherent and personal instead of generic.
+
+   When called from regular tools (no DNA passed), it returns an empty
+   string so behavior is unchanged for non-package use.
 ══════════════════════════════════════════════════════════════════ */
+function psychProfileBlock(inputs) {
+  // Only include if we have psychological context (from Launch Package)
+  if (!inputs || (!inputs.psychWhoYouAre && !inputs.psychWorkStyle && !inputs.psychStrength)) return '';
+  return `
+═══ THE FOUNDER YOU ARE WRITING FOR (read this first) ═══
+${inputs.psychWhoYouAre ? `Who they are: ${inputs.psychWhoYouAre}` : ''}
+${inputs.psychStrength ? `Their real strength: ${inputs.psychStrength}` : ''}
+${inputs.psychWorkStyle ? `Their work style: ${inputs.psychWorkStyle}` : ''}
+${inputs.psychEnergy ? `Their energy type: ${inputs.psychEnergy}` : ''}
+${inputs.psychMotivation ? `What actually drives them: ${inputs.psychMotivation}` : ''}
+${inputs.psychRiskDNA ? `Their risk DNA: ${inputs.psychRiskDNA}` : ''}
+${inputs.psychAvoid ? `Avoid recommending this kind of work: ${inputs.psychAvoid}` : ''}
+${inputs.pathName ? `Their recommended path: ${inputs.pathName}` : ''}
+${inputs.pathUnfair ? `Their unfair advantage: ${inputs.pathUnfair}` : ''}
+${inputs.pathRealCost ? `Honest cost of this path: ${inputs.pathRealCost}` : ''}
+
+THIS DOCUMENT MUST RESPECT THEIR PSYCHOLOGY:
+- Don't suggest tactics that drain their energy type
+- Don't recommend work in their "avoid at all cost" zone
+- Match the cadence and tone to their work style (Detective wants depth, Performer wants visibility, Builder wants concrete steps, etc.)
+- Reference their unfair advantage where natural
+- Treat them as the specific human described above — not a generic founder
+═══════════════════════════════════════════════════════════════
+`;
+}
 
 // ── BRAND KIT ─────────────────────────────────────────────────────────────
 async function generateBrandKit(inputs) {
   return geminiChat(
-`Create a complete Brand Kit for this MENA entrepreneur:
+`${psychProfileBlock(inputs)}
+Create a complete Brand Kit for this MENA entrepreneur:
 
 Business: ${inputs.businessName}
 Industry: ${inputs.industry}
@@ -142,7 +178,8 @@ async function generateBusinessPlan(inputs) {
   const country = inputs.location || 'the MENA region';
   const currency = getCurrency(country);
   return geminiChat(
-`Write a complete, investor-ready business plan for:
+`${psychProfileBlock(inputs)}
+Write a complete, investor-ready business plan for:
 
 Founder: Someone building this for real — not an academic exercise
 Business: ${inputs.businessName}
@@ -207,7 +244,8 @@ Top 3 risks specific to ${country} + mitigation plan for each
 // ── COMPETITOR MATRIX ─────────────────────────────────────────────────────
 async function generateCompetitorMatrix(inputs) {
   return geminiChat(
-`Conduct a deep competitive intelligence analysis for:
+`${psychProfileBlock(inputs)}
+Conduct a deep competitive intelligence analysis for:
 
 Business: ${inputs.businessName}
 Industry: ${inputs.industry}
@@ -247,7 +285,8 @@ For each:
 // ── PRICING STRATEGY ──────────────────────────────────────────────────────
 async function generatePricingCalculator(inputs) {
   return geminiChat(
-`Build a complete pricing strategy for:
+`${psychProfileBlock(inputs)}
+Build a complete pricing strategy for:
 
 Business: ${inputs.businessName}
 Product/Service: ${inputs.product}
@@ -294,7 +333,8 @@ If you sign X clients at Y price = Z revenue (3 scenarios: conservative, realist
 // ── LAUNCH ROADMAP ────────────────────────────────────────────────────────
 async function generateLaunchRoadmap(inputs) {
   return geminiChat(
-`Create a hyper-specific 30-Day Launch Roadmap for:
+`${psychProfileBlock(inputs)}
+Create a hyper-specific 30-Day Launch Roadmap for:
 
 Business: ${inputs.businessName}
 Industry: ${inputs.industry}
@@ -348,7 +388,8 @@ Week 4 Goal: [Specific measurable milestone]
 // ── CONTRACT ──────────────────────────────────────────────────────────────
 async function generateContract(inputs) {
   return geminiChat(
-`Generate a professional ${inputs.contractType || 'Service Agreement'} for a MENA business context:
+`${psychProfileBlock(inputs)}
+Generate a professional ${inputs.contractType || 'Service Agreement'} for a MENA business context:
 
 Party A (Provider): ${inputs.partyA || '[YOUR COMPANY NAME]'}
 Party B (Client): ${inputs.partyB || '[CLIENT NAME]'}
@@ -412,7 +453,8 @@ async function generateBudgetEstimator(inputs) {
   const country = inputs.location || 'MENA';
   const currency = getCurrency(country);
   return geminiChat(
-`Create a realistic 6-Month Startup Budget for:
+`${psychProfileBlock(inputs)}
+Create a realistic 6-Month Startup Budget for:
 
 Business Type: ${inputs.businessType}
 Industry: ${inputs.industry}
@@ -462,7 +504,8 @@ Recommended (3-month runway): [Amount in ${currency}]
 // ── PITCH DECK ────────────────────────────────────────────────────────────
 async function generatePitchDeck(inputs) {
   return geminiChat(
-`Create a complete Investor Pitch Deck script for:
+`${psychProfileBlock(inputs)}
+Create a complete Investor Pitch Deck script for:
 
 Business: ${inputs.businessName}
 Industry: ${inputs.industry}
@@ -530,7 +573,8 @@ For each slide: [HEADLINE] | Key bullets | Speaker note | What the investor is t
 // ── AD COPY ───────────────────────────────────────────────────────────────
 async function generateAdCopy(inputs) {
   return geminiChat(
-`Write high-converting ad copy for a MENA audience:
+`${psychProfileBlock(inputs)}
+Write high-converting ad copy for a MENA audience:
 
 Business: ${inputs.businessName}
 Product/Service: ${inputs.product}
@@ -588,7 +632,8 @@ CTA (25-30 sec): [Exact call to action]
 async function generateSeoKeywords(inputs) {
   const isAr = inputs.language === 'ar';
   return geminiChat(
-`Create a complete SEO strategy for a MENA business:
+`${psychProfileBlock(inputs)}
+Create a complete SEO strategy for a MENA business:
 
 Business: ${inputs.businessName}
 Industry: ${inputs.industry}
@@ -636,7 +681,8 @@ Month 3: [Specific tasks — and what results to expect]`,
 // ── COLD EMAIL ────────────────────────────────────────────────────────────
 async function generateColdEmail(inputs) {
   return geminiChat(
-`Write a complete cold outreach system for:
+`${psychProfileBlock(inputs)}
+Write a complete cold outreach system for:
 
 Sender: ${inputs.senderBusiness}
 Target Prospect: ${inputs.targetProspect}
@@ -838,7 +884,8 @@ End your output with </html>. Nothing else after.`;
 // ── SALES SCRIPT ──────────────────────────────────────────────────────────
 async function generateSalesScript(inputs) {
   return geminiChat(
-`Create a complete sales script for:
+`${psychProfileBlock(inputs)}
+Create a complete sales script for:
 
 Business: ${inputs.businessName}
 Product/Service: ${inputs.product}
@@ -898,7 +945,8 @@ MENA SALES CULTURE:
 // ── MARKET RESEARCH ───────────────────────────────────────────────────────
 async function generateMarketResearch(inputs) {
   return geminiChat(
-`Conduct professional market research for:
+`${psychProfileBlock(inputs)}
+Conduct professional market research for:
 
 Industry/Niche: ${inputs.niche}
 Region: ${inputs.region || 'MENA / Arab World'}
@@ -946,7 +994,8 @@ This research is for a real founder making real decisions. Give them intelligenc
 
 async function generateMarketingStrategy(inputs) {
   return geminiChat(
-`Build a complete marketing strategy for:
+`${psychProfileBlock(inputs)}
+Build a complete marketing strategy for:
 
 Business: ${inputs.businessName}
 Industry: ${inputs.industry}
