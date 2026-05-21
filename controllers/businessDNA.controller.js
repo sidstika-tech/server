@@ -1,5 +1,5 @@
 const BusinessDNA = require('../models/businessDNA.model');
-const { openrouterChat } = require('../services/gemini.service');
+const { geminiChat } = require('../services/gemini.service');
 
 /* ══════════════════════════════════════════════════════════════════
    BUSINESS DNA — PSYCHOLOGICAL ARCHITECT & TALENT HUNTER
@@ -61,7 +61,7 @@ exports.generateDNA = async (req, res) => {
 
     const prompt = buildArchitectPrompt({ userName, country, city, ctx, answers: a });
 
-    const raw = await openrouterChat(
+    const raw = await geminiChat(
       prompt,
       `You are a Psychological Architect & Talent Hunter. You read humans between the lines. You don't match resumes to industries — you match psychology + behavior patterns + hidden strengths to a life path. You see the user more clearly than they see themselves. You write like a wise older sibling who has watched them quietly and finally tells them what you've seen. You only output valid JSON.`,
       {
@@ -166,30 +166,6 @@ exports.resetDNA = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to reset' });
-  }
-};
-
-/* ── PUT /api/business-dna/stage ───────────────────────────────
-   Updates the user's journeyStage as they progress through the
-   Launch Package (validated → branded → marketing → launched).
-   Used by the Launch Package controller and the frontend. */
-exports.updateStage = async (req, res) => {
-  try {
-    const validStages = ['pending','generated','validated','branded','marketing','launched'];
-    const { stage } = req.body || {};
-    if (!validStages.includes(stage)) {
-      return res.status(400).json({ error: 'Invalid stage' });
-    }
-    const dna = await BusinessDNA.findOneAndUpdate(
-      { user: req.user._id },
-      { journeyStage: stage },
-      { new: true }
-    );
-    if (!dna) return res.status(404).json({ error: 'DNA not found' });
-    res.json({ success: true, journeyStage: dna.journeyStage });
-  } catch (err) {
-    console.error('updateStage error:', err);
-    res.status(500).json({ error: 'Failed to update stage' });
   }
 };
 
