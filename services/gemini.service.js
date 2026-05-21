@@ -139,7 +139,7 @@ async function openrouterChat(prompt, systemInstruction, options) {
     ];
 
     const params = {
-      model: options?.model || 'anthropic/claude-3.5-sonnet',
+      model: options?.model || 'deepseek/deepseek-chat-v3.1',
       messages,
       temperature: options?.temperature ?? 0.7,
       top_p: options?.topP ?? 0.95,
