@@ -69,7 +69,7 @@ exports.generateDNA = async (req, res) => {
         topP: 0.95,
         json: true,
         language,
-        model: 'anthropic/claude-3.5-sonnet',
+        model: 'deepseek/deepseek-chat',
       }
     );
 
