@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{BRAND_NAME}} — Premium Solutions for Modern Business</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: {{PRIMARY_COLOR}};
+  --accent: {{ACCENT_COLOR}};
+  --bg: {{BG_COLOR}};
+  --text: {{TEXT_COLOR}};
+  --muted: rgba(255,255,255,0.65);
+  --surface: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.08);
+  --radius: 16px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:1.1rem 5%;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,15,0.78);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);transition:.3s}
+.logo{font-size:1.45rem;font-weight:800;letter-spacing:.5px;color:var(--primary)}
+.nav-links{display:flex;gap:2.2rem;align-items:center}
+.nav-links a{font-size:.9rem;font-weight:500;color:var(--muted);transition:.2s;position:relative}
+.nav-links a:hover{color:var(--primary)}
+.nav-links a::after{content:'';position:absolute;bottom:-6px;left:0;width:0;height:2px;background:var(--primary);transition:.25s}
+.nav-links a:hover::after{width:100%}
+.btn-nav{padding:.65rem 1.4rem;background:var(--primary);color:var(--bg);border-radius:30px;font-weight:600;font-size:.85rem;transition:.2s}
+.btn-nav:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(245,158,11,0.3)}
+.hamburger{display:none;font-size:1.5rem;background:none;border:none;color:var(--text);cursor:pointer}
+
+/* ── HERO ── */
+.hero{min-height:100vh;padding:8rem 5% 4rem;display:flex;align-items:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 20%, rgba(245,158,11,0.15), transparent 50%),radial-gradient(circle at 10% 80%, rgba(217,119,6,0.08), transparent 50%);pointer-events:none}
+.hero-content{max-width:1200px;margin:0 auto;position:relative;z-index:2;display:grid;grid-template-columns:1.1fr 1fr;gap:4rem;align-items:center;width:100%}
+.hero-tag{display:inline-block;padding:.45rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:30px;font-size:.78rem;color:var(--primary);font-weight:600;letter-spacing:.05em;margin-bottom:1.5rem}
+.hero h1{font-size:clamp(2.4rem,5.5vw,4.2rem);font-weight:800;line-height:1.1;margin-bottom:1.4rem;letter-spacing:-.02em}
+.hero h1 .accent{background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:1.1rem;color:var(--muted);margin-bottom:2.2rem;max-width:520px;line-height:1.7}
+.hero-cta{display:flex;gap:1rem;flex-wrap:wrap}
+.btn-primary{padding:1rem 2rem;background:var(--primary);color:var(--bg);border-radius:30px;font-weight:600;font-size:.95rem;border:none;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:.5rem}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(245,158,11,0.4)}
+.btn-secondary{padding:1rem 2rem;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:30px;font-weight:600;font-size:.95rem;cursor:pointer;transition:.2s}
+.btn-secondary:hover{border-color:var(--primary);color:var(--primary)}
+.hero-visual{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+.hero-card{background:linear-gradient(135deg,var(--surface),rgba(255,255,255,0.02));border:1px solid var(--border);border-radius:24px;padding:2rem;backdrop-filter:blur(20px);transform:rotate(-3deg);box-shadow:0 30px 80px rgba(0,0,0,0.4);animation:floaty 6s ease-in-out infinite}
+@keyframes floaty{0%,100%{transform:rotate(-3deg) translateY(0)}50%{transform:rotate(-3deg) translateY(-15px)}}
+.hero-card-stat{display:flex;justify-content:space-between;align-items:center;padding:1rem 0;border-bottom:1px solid var(--border)}
+.hero-card-stat:last-child{border-bottom:none}
+.stat-val{font-size:1.4rem;font-weight:700;color:var(--primary)}
+.stat-lbl{font-size:.78rem;color:var(--muted)}
+.hero-orb{position:absolute;width:400px;height:400px;background:radial-gradient(circle,var(--primary),transparent 70%);opacity:.15;filter:blur(60px);top:-100px;right:-100px;border-radius:50%;animation:pulse 4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.15;transform:scale(1)}50%{opacity:.25;transform:scale(1.1)}}
+
+/* ── SECTIONS ── */
+.section{padding:6rem 5%;position:relative}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-header{text-align:center;margin-bottom:4rem}
+.section-tag{display:inline-block;padding:.4rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:30px;font-size:.75rem;color:var(--primary);font-weight:600;letter-spacing:.06em;margin-bottom:1rem;text-transform:uppercase}
+.section h2{font-size:clamp(2rem,4vw,3rem);font-weight:800;margin-bottom:1rem;letter-spacing:-.02em}
+.section-sub{color:var(--muted);font-size:1.05rem;max-width:620px;margin:0 auto;line-height:1.7}
+
+/* ── FEATURES ── */
+.features{background:linear-gradient(180deg,transparent,rgba(245,158,11,0.02))}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem}
+.feature{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;transition:.3s;position:relative;overflow:hidden}
+.feature:hover{transform:translateY(-5px);border-color:var(--primary)}
+.feature::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--primary),var(--accent));transform:scaleX(0);transform-origin:left;transition:.4s}
+.feature:hover::before{transform:scaleX(1)}
+.feature-icon{width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:1.2rem}
+.feature h3{font-size:1.2rem;font-weight:700;margin-bottom:.6rem}
+.feature p{color:var(--muted);font-size:.92rem;line-height:1.65}
+
+/* ── ABOUT / STATS ── */
+.about{background:linear-gradient(180deg,rgba(245,158,11,0.02),transparent)}
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
+.about-content h2{margin-bottom:1.5rem}
+.about-content p{color:var(--muted);font-size:1rem;line-height:1.8;margin-bottom:1rem}
+.about-stats{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-top:2rem}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;text-align:center}
+.stat-num{font-size:2.4rem;font-weight:800;color:var(--primary);line-height:1}
+.stat-label{font-size:.82rem;color:var(--muted);margin-top:.5rem}
+
+/* ── SERVICES / PRICING ── */
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;max-width:1100px;margin:0 auto}
+.price-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2.2rem;text-align:center;transition:.3s;position:relative}
+.price-card.featured{border-color:var(--primary);background:linear-gradient(135deg,rgba(245,158,11,0.06),transparent);transform:scale(1.04)}
+.price-card.featured::before{content:'MOST POPULAR';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);padding:5px 14px;border-radius:20px;font-size:.7rem;font-weight:700;letter-spacing:.08em}
+.price-card:hover{transform:translateY(-5px)}
+.price-card.featured:hover{transform:translateY(-5px) scale(1.04)}
+.price-name{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+.price-amt{font-size:2.8rem;font-weight:800;margin:.6rem 0;color:var(--primary)}
+.price-amt small{font-size:1rem;color:var(--muted);font-weight:400}
+.price-features{list-style:none;margin:1.8rem 0;text-align:left}
+.price-features li{padding:.6rem 0;color:var(--muted);font-size:.9rem;display:flex;align-items:flex-start;gap:.6rem}
+.price-features li::before{content:'✓';color:var(--primary);font-weight:700;flex-shrink:0}
+
+/* ── TESTIMONIALS ── */
+.testimonials{background:linear-gradient(180deg,transparent,rgba(245,158,11,0.02))}
+.testimonials-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem}
+.testimonial{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;position:relative}
+.testimonial-quote{font-size:3rem;color:var(--primary);line-height:1;opacity:.3;font-family:Georgia,serif}
+.testimonial p{color:var(--muted);font-size:.95rem;line-height:1.7;margin:.5rem 0 1.5rem;font-style:italic}
+.testimonial-author{display:flex;align-items:center;gap:.8rem}
+.author-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--bg)}
+.author-info{font-size:.85rem}
+.author-name{font-weight:600}
+.author-title{color:var(--muted);font-size:.75rem}
+
+/* ── CONTACT ── */
+.contact{background:linear-gradient(180deg,rgba(245,158,11,0.02),transparent)}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;max-width:1000px;margin:0 auto}
+.contact-info p{color:var(--muted);margin-bottom:1.5rem;line-height:1.7}
+.contact-item{display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;padding:1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+.contact-icon{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.contact-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem}
+.form-group{margin-bottom:1.2rem}
+.form-group label{display:block;font-size:.85rem;font-weight:500;margin-bottom:.5rem;color:var(--text)}
+.form-group input,.form-group textarea{width:100%;padding:.85rem 1rem;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:.95rem;transition:.2s}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:var(--primary);background:rgba(0,0,0,0.3)}
+.form-group textarea{min-height:120px;resize:vertical}
+.form-submit{width:100%;padding:1rem;background:var(--primary);color:var(--bg);border:none;border-radius:10px;font-weight:600;font-size:1rem;cursor:pointer;transition:.2s}
+.form-submit:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(245,158,11,0.3)}
+
+/* ── FOOTER ── */
+footer{padding:3rem 5% 2rem;border-top:1px solid var(--border);background:rgba(0,0,0,0.3)}
+.footer-content{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:2.5rem}
+.footer-brand .logo{margin-bottom:1rem}
+.footer-brand p{color:var(--muted);font-size:.9rem;line-height:1.65;max-width:320px}
+.footer-col h4{font-size:.9rem;font-weight:700;margin-bottom:1.2rem;color:var(--text);text-transform:uppercase;letter-spacing:.08em}
+.footer-col a{display:block;color:var(--muted);font-size:.88rem;padding:.4rem 0;transition:.2s}
+.footer-col a:hover{color:var(--primary)}
+.footer-bottom{max-width:1200px;margin:0 auto;padding-top:2rem;border-top:1px solid var(--border);text-align:center;color:var(--muted);font-size:.85rem}
+
+/* ── ANIMATIONS ── */
+.fade-up{opacity:0;transform:translateY(30px);transition:.8s ease}
+.fade-up.visible{opacity:1;transform:translateY(0)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .hero-content,.about-grid,.contact-grid{grid-template-columns:1fr;gap:2.5rem}
+  .footer-content{grid-template-columns:1fr 1fr}
+  .nav-links{display:none}
+  .hamburger{display:block}
+  .nav-links.open{display:flex;position:absolute;top:100%;left:0;right:0;background:rgba(10,10,15,0.95);flex-direction:column;padding:1.5rem;gap:1rem;border-bottom:1px solid var(--border)}
+  .hero-card{transform:rotate(0deg)}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}
+}
+@media(max-width:600px){
+  .footer-content{grid-template-columns:1fr}
+  .hero{padding:7rem 5% 3rem}
+  .price-card.featured{transform:scale(1)}
+  .price-card.featured:hover{transform:translateY(-5px)}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ NAVIGATION ══ -->
+<nav>
+  <div class="logo">{{BRAND_NAME}}</div>
+  <div class="nav-links" id="nav-links">
+    <a href="#features">Features</a>
+    <a href="#about">About</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#testimonials">Reviews</a>
+    <a href="#contact">Contact</a>
+    <a href="#contact" class="btn-nav">Get Started</a>
+  </div>
+  <button class="hamburger" onclick="document.getElementById('nav-links').classList.toggle('open')">☰</button>
+</nav>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <div class="hero-orb"></div>
+  <div class="hero-content">
+    <div>
+      <span class="hero-tag">✦ Trusted by 1,000+ businesses</span>
+      <h1>Build something <span class="accent">remarkable</span> with {{BRAND_NAME}}</h1>
+      <p>We help ambitious businesses turn ideas into measurable results. Real strategy, real execution, real growth — built for the way you actually work.</p>
+      <div class="hero-cta">
+        <a href="#contact" class="btn-primary">Start Today →</a>
+        <a href="#features" class="btn-secondary">Learn More</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-card">
+        <div class="hero-card-stat"><div><div class="stat-lbl">Revenue Growth</div></div><div class="stat-val">+248%</div></div>
+        <div class="hero-card-stat"><div><div class="stat-lbl">Active Clients</div></div><div class="stat-val">1,247</div></div>
+        <div class="hero-card-stat"><div><div class="stat-lbl">Avg. ROI</div></div><div class="stat-val">5.8x</div></div>
+        <div class="hero-card-stat"><div><div class="stat-lbl">Satisfaction</div></div><div class="stat-val">99%</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FEATURES ══ -->
+<section class="section features" id="features">
+  <div class="section-inner">
+    <div class="section-header fade-up">
+      <span class="section-tag">What we do</span>
+      <h2>Built to deliver real outcomes</h2>
+      <p class="section-sub">Three core capabilities that consistently move the needle for our clients.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature fade-up">
+        <div class="feature-icon">⚡</div>
+        <h3>Fast Execution</h3>
+        <p>We don't just plan — we ship. Our average project goes from kickoff to launch in 30 days or less, without compromising quality.</p>
+      </div>
+      <div class="feature fade-up">
+        <div class="feature-icon">🎯</div>
+        <h3>Strategic Focus</h3>
+        <p>Every recommendation is tied to a measurable business outcome. No vanity metrics, no theater — just things that move revenue.</p>
+      </div>
+      <div class="feature fade-up">
+        <div class="feature-icon">🤝</div>
+        <h3>True Partnership</h3>
+        <p>We work as an extension of your team, not a vendor. You get direct access to senior strategists, not a junior account manager.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ ABOUT ══ -->
+<section class="section about" id="about">
+  <div class="section-inner">
+    <div class="about-grid">
+      <div class="about-content fade-up">
+        <span class="section-tag">Our story</span>
+        <h2>Built for businesses that refuse to settle</h2>
+        <p>{{BRAND_NAME}} was founded on a simple belief: most consultancies sell decks, not outcomes. We exist to be the opposite.</p>
+        <p>For the past several years, we've helped ambitious founders and operators across multiple industries take ideas from concept to revenue — fast. We pick our clients carefully because we treat every engagement like we have skin in the game.</p>
+        <div class="about-stats">
+          <div class="stat-box"><div class="stat-num">1,000+</div><div class="stat-label">Clients Served</div></div>
+          <div class="stat-box"><div class="stat-num">$50M+</div><div class="stat-label">Revenue Generated</div></div>
+          <div class="stat-box"><div class="stat-num">12+</div><div class="stat-label">Industries Served</div></div>
+          <div class="stat-box"><div class="stat-num">98%</div><div class="stat-label">Client Retention</div></div>
+        </div>
+      </div>
+      <div class="hero-visual fade-up">
+        <div class="hero-card" style="transform:rotate(2deg)">
+          <h3 style="font-size:1.05rem;margin-bottom:1rem;color:var(--primary)">⚡ Why teams choose us</h3>
+          <ul style="list-style:none">
+            <li style="padding:.6rem 0;color:var(--muted);font-size:.88rem;border-bottom:1px solid var(--border)">✓ Senior-only delivery teams</li>
+            <li style="padding:.6rem 0;color:var(--muted);font-size:.88rem;border-bottom:1px solid var(--border)">✓ Outcome-based pricing available</li>
+            <li style="padding:.6rem 0;color:var(--muted);font-size:.88rem;border-bottom:1px solid var(--border)">✓ Weekly executive sessions</li>
+            <li style="padding:.6rem 0;color:var(--muted);font-size:.88rem">✓ Real-time progress dashboards</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PRICING ══ -->
+<section class="section" id="pricing">
+  <div class="section-inner">
+    <div class="section-header fade-up">
+      <span class="section-tag">Pricing</span>
+      <h2>Pick the engagement that fits</h2>
+      <p class="section-sub">Transparent pricing. No surprises. Switch or cancel anytime.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="price-card fade-up">
+        <div class="price-name">Starter</div>
+        <div class="price-amt">$499<small>/mo</small></div>
+        <ul class="price-features">
+          <li>2 strategy sessions monthly</li>
+          <li>Email & chat support</li>
+          <li>Quarterly business review</li>
+          <li>Access to playbook library</li>
+        </ul>
+        <a href="#contact" class="btn-primary" style="width:100%;display:block">Start Now</a>
+      </div>
+      <div class="price-card featured fade-up">
+        <div class="price-name">Growth</div>
+        <div class="price-amt">$1,499<small>/mo</small></div>
+        <ul class="price-features">
+          <li>Weekly strategy sessions</li>
+          <li>Priority response (24h)</li>
+          <li>Monthly executive reviews</li>
+          <li>Custom dashboards & analytics</li>
+          <li>Direct line to senior team</li>
+        </ul>
+        <a href="#contact" class="btn-primary" style="width:100%;display:block">Get Started</a>
+      </div>
+      <div class="price-card fade-up">
+        <div class="price-name">Scale</div>
+        <div class="price-amt">Custom</div>
+        <ul class="price-features">
+          <li>Dedicated team</li>
+          <li>Same-day response</li>
+          <li>Weekly executive presence</li>
+          <li>Custom integrations</li>
+          <li>White-glove onboarding</li>
+        </ul>
+        <a href="#contact" class="btn-secondary" style="width:100%;display:block">Talk to Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ TESTIMONIALS ══ -->
+<section class="section testimonials" id="testimonials">
+  <div class="section-inner">
+    <div class="section-header fade-up">
+      <span class="section-tag">What clients say</span>
+      <h2>Real results, real people</h2>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial fade-up">
+        <div class="testimonial-quote">"</div>
+        <p>Working with {{BRAND_NAME}} felt different from day one. They actually understood my business and gave me a plan I could execute. Three months later, revenue is up 60%.</p>
+        <div class="testimonial-author">
+          <div class="author-avatar">SA</div>
+          <div class="author-info"><div class="author-name">Sarah A.</div><div class="author-title">CEO, Atlas Retail</div></div>
+        </div>
+      </div>
+      <div class="testimonial fade-up">
+        <div class="testimonial-quote">"</div>
+        <p>I've worked with three agencies before. None of them came close to the level of strategic depth and ownership that {{BRAND_NAME}} brings. Worth every dirham.</p>
+        <div class="testimonial-author">
+          <div class="author-avatar">MK</div>
+          <div class="author-info"><div class="author-name">Mohammed K.</div><div class="author-title">Founder, Verde Brands</div></div>
+        </div>
+      </div>
+      <div class="testimonial fade-up">
+        <div class="testimonial-quote">"</div>
+        <p>They don't sell you what you want to hear. They tell you what will actually work. Sometimes hard to hear — always right. That's why I keep coming back.</p>
+        <div class="testimonial-author">
+          <div class="author-avatar">LO</div>
+          <div class="author-info"><div class="author-name">Layla O.</div><div class="author-title">COO, Mizra Holdings</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CONTACT ══ -->
+<section class="section contact" id="contact">
+  <div class="section-inner">
+    <div class="section-header fade-up">
+      <span class="section-tag">Get in touch</span>
+      <h2>Let's build something together</h2>
+      <p class="section-sub">Tell us about your business. We'll respond within 24 hours.</p>
+    </div>
+    <div class="contact-grid">
+      <div class="contact-info fade-up">
+        <p>We're selective about who we partner with, but if your business has real ambition and a willingness to execute, we'd love to talk.</p>
+        <div class="contact-item">
+          <div class="contact-icon">✉</div>
+          <div><div style="font-size:.78rem;color:var(--muted)">Email us</div><div style="font-weight:500">hello@{{BRAND_NAME}}.com</div></div>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">☎</div>
+          <div><div style="font-size:.78rem;color:var(--muted)">Call us</div><div style="font-weight:500">+971 50 000 0000</div></div>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">⌖</div>
+          <div><div style="font-size:.78rem;color:var(--muted)">Office</div><div style="font-weight:500">Business Bay, Dubai, UAE</div></div>
+        </div>
+      </div>
+      <form class="contact-form fade-up" onsubmit="event.preventDefault();alert('Thank you. We will be in touch shortly.');this.reset();">
+        <div class="form-group">
+          <label>Your Name</label>
+          <input type="text" required placeholder="Your full name">
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" required placeholder="you@company.com">
+        </div>
+        <div class="form-group">
+          <label>Company</label>
+          <input type="text" placeholder="Your company name">
+        </div>
+        <div class="form-group">
+          <label>How can we help?</label>
+          <textarea required placeholder="Tell us briefly what you're working on..."></textarea>
+        </div>
+        <button type="submit" class="form-submit">Send Message →</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="footer-content">
+    <div class="footer-brand">
+      <div class="logo">{{BRAND_NAME}}</div>
+      <p>Premium strategy and execution for ambitious businesses. We turn ideas into measurable results.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Company</h4>
+      <a href="#about">About</a>
+      <a href="#features">Services</a>
+      <a href="#pricing">Pricing</a>
+    </div>
+    <div class="footer-col">
+      <h4>Resources</h4>
+      <a href="#">Blog</a>
+      <a href="#">Case Studies</a>
+      <a href="#">Help Center</a>
+    </div>
+    <div class="footer-col">
+      <h4>Connect</h4>
+      <a href="#">LinkedIn</a>
+      <a href="#">Twitter</a>
+      <a href="#">Instagram</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    © <script>document.write(new Date().getFullYear())</script> {{BRAND_NAME}}. All rights reserved. Crafted with care.
+  </div>
+</footer>
+
+<script>
+// Smooth fade-up on scroll
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
+
+// Nav background on scroll
+window.addEventListener('scroll', () => {
+  const nav = document.querySelector('nav');
+  if (window.scrollY > 50) nav.style.background = 'rgba(10,10,15,0.95)';
+  else nav.style.background = 'rgba(10,10,15,0.78)';
+});
+
+// Close mobile menu on link click
+document.querySelectorAll('.nav-links a').forEach(a => {
+  a.addEventListener('click', () => document.getElementById('nav-links').classList.remove('open'));
+});
+</script>
+
+</body>
+</html>
