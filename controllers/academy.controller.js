@@ -331,7 +331,8 @@ Return the lesson as clean markdown with these sections:
 
 You are writing a single lesson in a 5-step founder's path. Your readers are mostly first-generation entrepreneurs across MENA. Be specific, warm, honest, and culturally aware. Never use Western-centric defaults. Write in clean markdown with the section headers requested.`;
 
-    const content = await geminiChat(prompt, system);
+    const language = req.body.language || req.headers['x-language'] || 'en';
+    const content = await geminiChat(prompt, system, { language });
 
     res.json({
       success: true,

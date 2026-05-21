@@ -41,6 +41,9 @@ exports.sendMessage = async (req, res) => {
     const { message, sessionId } = req.body;
     if (!message) return res.status(400).json({ error: 'Message required' });
 
+    // Pick up the user's UI language — body wins, X-Language header is fallback
+    const language = req.body.language || req.headers['x-language'] || 'en';
+
     // Sanitize message to prevent prompt injection
     const cleanMessage = sanitizeInputs({ message }).message || '';
     if (!cleanMessage) return res.status(400).json({ error: 'Message required' });
@@ -65,7 +68,7 @@ exports.sendMessage = async (req, res) => {
     await streamChat(chatHistory, 'chat', (chunk) => {
       fullResponse += chunk;
       res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
-    });
+    }, language);
 
     session.messages.push({ role: 'assistant', content: fullResponse });
 

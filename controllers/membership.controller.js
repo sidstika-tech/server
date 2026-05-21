@@ -24,14 +24,46 @@ exports.getCurrentPlan = async (req, res) => {
 
 exports.upgradePlan = async (req, res) => {
   try {
-    const { plan, paymentIntentId } = req.body;
+    const { plan, paymentIntentId, freeMonth, noCard } = req.body;
 
     if (!PLANS[plan]) return res.status(400).json({ error: 'Invalid plan' });
 
     const isPaidPlan = PLANS[plan].price > 0;
+    const isFreeTrial = !!(freeMonth || noCard);
 
-    // Block free upgrades to paid plans — payment must be verified first.
-    // When Stripe integration is ready, validate paymentIntentId with Stripe here.
+    // ── FREE TRIAL (NO CARD) — allow once per user ──
+    if (isPaidPlan && isFreeTrial) {
+      const existing = await User.findById(req.user._id);
+      if (existing?.membership?.trialUsed) {
+        return res.status(403).json({
+          error: 'trial_already_used',
+          message: 'You have already used your free trial. Please upgrade with a payment method.',
+        });
+      }
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 30);
+
+      const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+          'membership.plan': plan,
+          'membership.startDate': new Date(),
+          'membership.endDate': endDate,
+          'membership.active': true,
+          'membership.trialUsed': true,
+          'membership.isTrial': true,
+        },
+        { new: true }
+      );
+      return res.json({
+        success: true,
+        message: `Free trial activated. You have ${PLANS[plan].name} features for 30 days.`,
+        membership: user.membership,
+        trial: true,
+      });
+    }
+
+    // ── PAID UPGRADE — require payment proof ──
     if (isPaidPlan && !paymentIntentId) {
       return res.status(402).json({
         error: 'payment_required',
@@ -49,6 +81,7 @@ exports.upgradePlan = async (req, res) => {
         'membership.startDate': new Date(),
         'membership.endDate': endDate,
         'membership.active': true,
+        'membership.isTrial': false,
       },
       { new: true }
     );

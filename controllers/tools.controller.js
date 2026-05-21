@@ -98,7 +98,14 @@ exports.exportReport = async (req, res) => {
 exports.getReports = async (req, res) => {
   try {
     const { type } = req.query;
-    const filter = { user: req.user._id };
+    const filter = {
+      user: req.user._id,
+      // Only show tool reports — exclude Launch Package reports (they're shown via the package page)
+      $or: [
+        { 'inputs.fromPackage': { $ne: true } },
+        { 'inputs.fromPackage': { $exists: false } },
+      ],
+    };
     if (type) filter.type = type;
     const reports = await Report.find(filter)
       .select('title type createdAt status inputs')

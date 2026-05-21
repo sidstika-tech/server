@@ -39,8 +39,11 @@ FORMAT:
 - When listing steps, number them
 - Always end with: **Your next action: [specific thing to do today]**`;
 
-async function chat(messages, systemPrompt) {
-  const sysMsg = systemPrompt || ADVISOR_SYSTEM;
+async function chat(messages, systemPrompt, language) {
+  let sysMsg = systemPrompt || ADVISOR_SYSTEM;
+  if (language === 'ar') {
+    sysMsg += `\n\nCRITICAL: The user is in Arabic mode. Respond ENTIRELY in Modern Standard Arabic (الفصحى). Keep brand names, country codes, and URLs in their original language. Never respond in English.`;
+  }
   const response = await groq.chat.completions.create({
     model: MODEL,
     messages: [{ role:'system', content:sysMsg }, ...messages],
@@ -51,10 +54,14 @@ async function chat(messages, systemPrompt) {
   return response.choices[0]?.message?.content || '';
 }
 
-async function streamChat(messages, type, onChunk) {
+async function streamChat(messages, type, onChunk, language) {
+  let sysMsg = ADVISOR_SYSTEM;
+  if (language === 'ar') {
+    sysMsg += `\n\nCRITICAL: The user is in Arabic mode. Respond ENTIRELY in Modern Standard Arabic (الفصحى). Keep brand names, country codes, and URLs in their original language. Never respond in English.`;
+  }
   const stream = await groq.chat.completions.create({
     model: MODEL,
-    messages: [{ role:'system', content:ADVISOR_SYSTEM }, ...messages],
+    messages: [{ role:'system', content:sysMsg }, ...messages],
     temperature: 0.7,
     max_tokens: 4096,
     stream: true
@@ -125,7 +132,8 @@ Elevator pitch (30 seconds): [write it]
 
 ## Practical Usage Guide
 How to use this brand consistently across: Instagram, WhatsApp Business, business cards, invoices`,
-    `${MASTER_IDENTITY}\n\nYou are a world-class brand strategist who understands Arab market aesthetics, cultural color psychology, and Arabic typography. Create brand systems that work in both Arabic and English markets.`
+    `${MASTER_IDENTITY}\n\nYou are a world-class brand strategist who understands Arab market aesthetics, cultural color psychology, and Arabic typography. Create brand systems that work in both Arabic and English markets.`,
+    { language: inputs.language }
   );
 }
 
@@ -191,7 +199,8 @@ Top 3 risks specific to ${country} + mitigation plan for each
 
 ## 11. The Ask
 (If seeking investment: exact amount, equity offered, what it achieves)`,
-    `${MASTER_IDENTITY}\n\nYou are a senior business plan writer who has helped MENA founders raise capital and launch businesses across the Gulf, Levant, and North Africa. You know the real challenges — bureaucracy, cultural dynamics, halal requirements, family business pressures — and you write plans that reflect this reality.`
+    `${MASTER_IDENTITY}\n\nYou are a senior business plan writer who has helped MENA founders raise capital and launch businesses across the Gulf, Levant, and North Africa. You know the real challenges — bureaucracy, cultural dynamics, halal requirements, family business pressures — and you write plans that reflect this reality.`,
+    { language: inputs.language }
   );
 }
 
@@ -230,7 +239,8 @@ For each:
 
 ## Battle Plan
 5 specific moves to take market share in the next 90 days — tactics, not theory`,
-    `${MASTER_IDENTITY}\n\nYou are a competitive intelligence expert who has analyzed markets across the UAE, Saudi Arabia, Egypt, and broader MENA. You understand that many MENA markets have low competitive research standards — this is the opportunity.`
+    `${MASTER_IDENTITY}\n\nYou are a competitive intelligence expert who has analyzed markets across the UAE, Saudi Arabia, Egypt, and broader MENA. You understand that many MENA markets have low competitive research standards — this is the opportunity.`,
+    { language: inputs.language }
   );
 }
 
@@ -276,7 +286,8 @@ If you sign X clients at Y price = Z revenue (3 scenarios: conservative, realist
 
 ## The One Pricing Mistake to Avoid
 (The most common pricing error in your specific industry in MENA)`,
-    `${MASTER_IDENTITY}\n\nYou are a pricing strategist who deeply understands Arab market psychology, price anchoring in MENA, and the balance between appearing premium and accessible.`
+    `${MASTER_IDENTITY}\n\nYou are a pricing strategist who deeply understands Arab market psychology, price anchoring in MENA, and the balance between appearing premium and accessible.`,
+    { language: inputs.language }
   );
 }
 
@@ -329,7 +340,8 @@ Week 4 Goal: [Specific measurable milestone]
 
 ## The One Thing That Will Determine Success
 [The single most important focus for this specific business launch]`,
-    `${MASTER_IDENTITY}\n\nYou are a startup launch coach who has guided hundreds of MENA founders through their first 30 days. You know the platforms, the shortcuts, and the mistakes. You give real tasks, not inspirational advice.`
+    `${MASTER_IDENTITY}\n\nYou are a startup launch coach who has guided hundreds of MENA founders through their first 30 days. You know the platforms, the shortcuts, and the mistakes. You give real tasks, not inspirational advice.`,
+    { language: inputs.language }
   );
 }
 
@@ -390,7 +402,8 @@ Create a complete, professional contract that:
 
 ---
 ⚠️ IMPORTANT: This is a template. Have a licensed legal professional in ${inputs.jurisdiction || 'your country'} review before signing.`,
-    `${MASTER_IDENTITY}\n\nYou are a business attorney specializing in MENA commercial contracts. You write documents that protect small businesses while remaining practical and enforceable in Arab legal systems.`
+    `${MASTER_IDENTITY}\n\nYou are a business attorney specializing in MENA commercial contracts. You write documents that protect small businesses while remaining practical and enforceable in Arab legal systems.`,
+    { language: inputs.language }
   );
 }
 
@@ -441,7 +454,8 @@ Recommended (3-month runway): [Amount in ${currency}]
 
 ## The Honest Truth
 [One paragraph — the reality check they need to hear about their specific business model in ${country}]`,
-    `${MASTER_IDENTITY}\n\nYou are a startup CFO who has managed finances for MENA founders. You know the real costs in Dubai, Riyadh, Cairo, and Amman. You give honest numbers, not comfortable ones.`
+    `${MASTER_IDENTITY}\n\nYou are a startup CFO who has managed finances for MENA founders. You know the real costs in Dubai, Riyadh, Cairo, and Amman. You give honest numbers, not comfortable ones.`,
+    { language: inputs.language }
   );
 }
 
@@ -508,7 +522,8 @@ Exact amount, valuation (or not), what you'll achieve with this funding, timelin
 
 ---
 For each slide: [HEADLINE] | Key bullets | Speaker note | What the investor is thinking`,
-    `${MASTER_IDENTITY}\n\nYou are a pitch coach who has prepared MENA founders to raise from Gulf family offices, regional VCs (STV, Wamda, Flat6Labs, Beco Capital), and international investors. You know what MENA investors actually care about.`
+    `${MASTER_IDENTITY}\n\nYou are a pitch coach who has prepared MENA founders to raise from Gulf family offices, regional VCs (STV, Wamda, Flat6Labs, Beco Capital), and international investors. You know what MENA investors actually care about.`,
+    { language: inputs.language }
   );
 }
 
@@ -564,12 +579,14 @@ CTA (25-30 sec): [Exact call to action]
 
 ## AD TESTING PLAN
 [How to A/B test with limited budget — MENA market best practices]`,
-    `${MASTER_IDENTITY}\n\nYou are a performance marketing expert who has run campaigns across UAE, Saudi Arabia, Egypt, and Jordan. You understand that Arabic copy outperforms English in most MENA campaigns and that WhatsApp is the most powerful channel most brands ignore.`
+    `${MASTER_IDENTITY}\n\nYou are a performance marketing expert who has run campaigns across UAE, Saudi Arabia, Egypt, and Jordan. You understand that Arabic copy outperforms English in most MENA campaigns and that WhatsApp is the most powerful channel most brands ignore.`,
+    { language: inputs.language }
   );
 }
 
 // ── SEO KEYWORDS ──────────────────────────────────────────────────────────
 async function generateSeoKeywords(inputs) {
+  const isAr = inputs.language === 'ar';
   return geminiChat(
 `Create a complete SEO strategy for a MENA business:
 
@@ -578,6 +595,7 @@ Industry: ${inputs.industry}
 Website: ${inputs.website || 'New website — starting from zero'}
 Location: ${inputs.location || 'UAE / MENA'}
 Known Competitors: ${inputs.competitors || 'None identified yet'}
+${isAr ? 'OUTPUT LANGUAGE: ARABIC — write the entire SEO strategy in Arabic, including all section headers. Keep the brand name and English keywords in Latin script when applicable.' : 'OUTPUT LANGUAGE: English'}
 
 MENA SEO REALITY:
 - Arabic search volume is MASSIVELY underserved — ranking in Arabic is 10x easier than English
@@ -610,7 +628,8 @@ MENA SEO REALITY:
 Month 1: [Specific tasks]
 Month 2: [Specific tasks]
 Month 3: [Specific tasks — and what results to expect]`,
-    `${MASTER_IDENTITY}\n\nYou are an SEO strategist who has ranked MENA businesses in Arabic and English. You know that Arabic SEO is an untapped goldmine that most businesses ignore.`
+    `${MASTER_IDENTITY}\n\nYou are an SEO strategist who has ranked MENA businesses in Arabic and English. You know that Arabic SEO is an untapped goldmine that most businesses ignore. ${isAr ? 'You write fluently in modern Arabic.' : ''}`,
+    { language: inputs.language }
   );
 }
 
@@ -666,13 +685,17 @@ Full email: [Graceful, leaves door open — many MENA deals happen 6 months late
 
 ## Top 7 Objections + Exact Responses:
 [MENA-specific objections with culturally appropriate responses]`,
-    `${MASTER_IDENTITY}\n\nYou are a B2B sales expert who has closed deals with Gulf corporates, Egyptian SMEs, and Levant businesses. You understand relationship-first sales culture in Arab markets.`
+    `${MASTER_IDENTITY}\n\nYou are a B2B sales expert who has closed deals with Gulf corporates, Egyptian SMEs, and Levant businesses. You understand relationship-first sales culture in Arab markets.`,
+    { language: inputs.language }
   );
 }
 
 // ── WEBSITE CREATION ──────────────────────────────────────────────────────
 async function generateWebsiteCreation(inputs) {
-  return geminiChat(
+  const lang = inputs.language === 'ar' ? 'ar' : 'en';
+  const isAr = lang === 'ar';
+
+  const raw = await geminiChat(
 `You are an expert full-stack web developer. Generate a complete, professional, single-file website.
 
 Project: ${inputs.businessName}
@@ -682,24 +705,56 @@ Color Style: ${inputs.colors || 'Dark & Gold (Luxury)'}
 Font Style: ${inputs.fonts || 'Modern Sans-Serif'}
 Interactive Features: ${inputs.interactive || 'Smooth Scroll + Animations'}
 Extra Requirements: ${inputs.extraDetails || 'None'}
+LANGUAGE: ${isAr ? 'ARABIC — All text content in Arabic. Set <html lang="ar" dir="rtl"> and use right-to-left layout.' : 'English — All text content in English. Set <html lang="en">.'}
 
-REQUIREMENTS — follow every one without exception:
-- Return ONLY raw HTML. Zero markdown. Zero backticks. Zero explanation. Start with <!DOCTYPE html>.
-- ALL CSS inside one <style> tag in <head>
-- ALL JavaScript inside one <script> tag before </body>
-- Google Fonts via <link> in <head>
-- Fully responsive: mobile, tablet, desktop
-- Sticky navigation bar with smooth scroll to sections
-- Real content — NOT Lorem Ipsum. Write actual compelling copy for this business type.
-- CSS animations on page load for hero section
-- If contact form requested: styled HTML form (no backend needed)
-- Professional modern design — avoid anything that looks like a template from 2015
-- If Color Style includes Arabic/MENA market: ensure RTL-ready structure
-- Footer with copyright year using JavaScript: document.write(new Date().getFullYear())
+ABSOLUTE REQUIREMENTS — VIOLATE NONE:
+1. Output ONLY raw HTML starting with <!DOCTYPE html>
+2. NO markdown code fences (no \`\`\`html, no \`\`\`)
+3. NO explanation text before or after the HTML
+4. ALL CSS inside ONE <style> tag in <head>
+5. ALL JavaScript inside ONE <script> tag before </body>
+6. Google Fonts via <link> in <head>
+7. Fully responsive: mobile, tablet, desktop
+8. Sticky navigation with smooth scroll to sections
+9. REAL CONTENT — no Lorem Ipsum. Write actual compelling copy for this business in ${isAr ? 'Arabic' : 'English'}.
+10. CSS animations on hero section load
+11. Contact form if requested (styled, no backend)
+12. Professional modern design — avoid 2015-era templates
+13. Footer with copyright year using JavaScript: document.write(new Date().getFullYear())
+14. ${isAr ? 'RTL layout: dir="rtl", text-align: right, mirrored navigation' : 'LTR standard layout'}
 
-End with </html>. Nothing after it.`,
-    'You are an expert web developer. Output ONLY clean HTML starting with <!DOCTYPE html>. Nothing else.'
+End with </html>. Output nothing else after.`,
+    `You are an expert web developer. Output ONLY clean HTML starting with <!DOCTYPE html>. Nothing else — no markdown fences, no explanation.`,
+    { temperature: 0.7, topP: 0.95, language: inputs.language }
   );
+
+  // Post-processing: extract clean HTML even when Gemini wraps it in markdown or adds chatter
+  let html = String(raw || '').trim();
+
+  // Strip markdown code fences if present
+  html = html.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  // If output contains <!DOCTYPE html> somewhere, extract from there
+  const docMatch = html.match(/<!DOCTYPE\s+html[\s\S]*<\/html>/i);
+  if (docMatch) {
+    html = docMatch[0];
+  } else {
+    // If no doctype, try to extract <html>...</html>
+    const htmlMatch = html.match(/<html[\s\S]*<\/html>/i);
+    if (htmlMatch) {
+      html = '<!DOCTYPE html>\n' + htmlMatch[0];
+    } else {
+      // Fallback: wrap whatever we got in a basic doctype
+      throw new Error('Generated content was not valid HTML. Please try again.');
+    }
+  }
+
+  // Sanity check: must be at least 500 chars to be a real website
+  if (html.length < 500) {
+    throw new Error('Generated website was too short. Please try again with more details.');
+  }
+
+  return html;
 }
 
 // ── SALES SCRIPT ──────────────────────────────────────────────────────────
@@ -757,7 +812,8 @@ MENA SALES CULTURE:
 
 ## Referral Ask Script
 [How to ask every client for a referral — timing and exact words]`,
-    `${MASTER_IDENTITY}\n\nYou are a sales trainer who has coached teams in Dubai, Riyadh, and Cairo. You understand that sales in Arab culture is relationship management, not pressure tactics.`
+    `${MASTER_IDENTITY}\n\nYou are a sales trainer who has coached teams in Dubai, Riyadh, and Cairo. You understand that sales in Arab culture is relationship management, not pressure tactics.`,
+    { language: inputs.language }
   );
 }
 
@@ -805,7 +861,8 @@ This research is for a real founder making real decisions. Give them intelligenc
 
 ## 30-Day Research Action Plan
 [What to do in the next 30 days to validate this market with your own data]`,
-    `${MASTER_IDENTITY}\n\nYou are a senior market research analyst who has studied consumer behavior across UAE, Saudi Arabia, Egypt, and the broader Arab world. You know the difference between global market reports and ground-level MENA reality.`
+    `${MASTER_IDENTITY}\n\nYou are a senior market research analyst who has studied consumer behavior across UAE, Saudi Arabia, Egypt, and the broader Arab world. You know the difference between global market reports and ground-level MENA reality.`,
+    { language: inputs.language }
   );
 }
 
@@ -852,7 +909,8 @@ Month 3 — Scale: [Specific weekly tasks]
 
 ## The Unfair Advantage
 [One tactic specific to this business in MENA that competitors are not doing]`,
-    `${MASTER_IDENTITY}\n\nYou are a marketing strategist who has grown MENA brands across Gulf and North Africa markets. You know that WhatsApp and Arabic content are massively undervalued and that micro-influencers in MENA outperform mega-influencers in almost every category.`
+    `${MASTER_IDENTITY}\n\nYou are a marketing strategist who has grown MENA brands across Gulf and North Africa markets. You know that WhatsApp and Arabic content are massively undervalued and that micro-influencers in MENA outperform mega-influencers in almost every category.`,
+    { language: inputs.language }
   );
 }
 

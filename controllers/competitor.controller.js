@@ -30,7 +30,7 @@ function startOfThisWeekUTC() {
 
 /* ── Core analysis prompt — the prompt does the real work ────────── */
 
-async function analyzeCompetitor(competitor, dna) {
+async function analyzeCompetitor(competitor, dna, language) {
   const userBusiness  = dna?.matchResult?.businessMatch || dna?.industry || 'their business';
   const userCountry   = dna?.country || 'MENA region';
   const userIndustry  = dna?.industry || 'general';
@@ -79,7 +79,7 @@ Return ONLY valid JSON, no markdown, no backticks:
 
 You are a competitive intelligence analyst who has watched MENA markets for 15 years. You know the difference between noise and signal. You write briefings the way a trusted partner would — confident where you can be, honest where you can't. Return ONLY valid JSON.`;
 
-  const raw = await geminiChat(prompt, system);
+  const raw = await geminiChat(prompt, system, { language: language || 'en', json: true, temperature: 0.85 });
   const clean = raw.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
   const parsed = JSON.parse(clean);
 
@@ -181,8 +181,9 @@ exports.analyzeNow = async (req, res) => {
     if (!competitor) return res.status(404).json({ error: 'Not found' });
 
     const dna = await BusinessDNA.findOne({ user: req.user._id });
+    const language = req.body.language || req.headers['x-language'] || 'en';
 
-    const intel = await analyzeCompetitor(competitor, dna);
+    const intel = await analyzeCompetitor(competitor, dna, language);
     const entry = { ...intel, weekOf: startOfThisWeekUTC() };
 
     competitor.intel.unshift(entry);
@@ -319,12 +320,13 @@ exports.previewMyDigest = async (req, res) => {
     if (!competitors.length) return res.json({ success: true, message: 'No competitors tracked yet.', items: [] });
 
     const dna = await BusinessDNA.findOne({ user: req.user._id });
+    const language = req.headers['x-language'] || 'en';
     const weekOf = startOfThisWeekUTC();
     const items = [];
 
     for (const c of competitors) {
       try {
-        const intel = await analyzeCompetitor(c, dna);
+        const intel = await analyzeCompetitor(c, dna, language);
         items.push({ name: c.name, ...intel });
         c.intel.unshift({ ...intel, weekOf });
         if (c.intel.length > 12) c.intel = c.intel.slice(0, 12);

@@ -71,3 +71,46 @@ exports.logout = async (req, res) => {
   }
   res.json({ success: true, message: 'Logged out successfully' });
 };
+
+/* ──────────────────────────────────────────────────────────────────
+   ADMIN PROMOTION — protected by ADMIN_SECRET env var
+   Usage:
+     POST /api/auth/promote-admin
+     Headers: { "x-admin-secret": "<your ADMIN_SECRET env value>" }
+     Body:    { "email": "you@example.com", "admin": true }
+   The user is upgraded to isAdmin + enterprise plan (zero limits).
+   Set admin:false to revert.
+──────────────────────────────────────────────────────────────────── */
+exports.promoteAdmin = async (req, res) => {
+  try {
+    const expected = process.env.ADMIN_SECRET;
+    if (!expected) return res.status(500).json({ error: 'ADMIN_SECRET not configured on server' });
+
+    const provided = req.headers['x-admin-secret'];
+    if (provided !== expected) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { email, admin = true } = req.body;
+    if (!email) return res.status(400).json({ error: 'email is required' });
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) return res.status(404).json({ error: 'User not found. Register first, then promote.' });
+
+    user.isAdmin = !!admin;
+    if (admin) {
+      // Bump them to enterprise plan as a belt-and-suspenders measure
+      user.membership.plan = 'enterprise';
+      user.membership.active = true;
+      user.membership.endDate = new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000); // 100 years
+    }
+    await user.save();
+
+    res.json({
+      success: true,
+      message: admin ? `${email} is now an admin with unlimited access` : `${email} is no longer an admin`,
+      user: { email: user.email, isAdmin: user.isAdmin, plan: user.membership.plan },
+    });
+  } catch (err) {
+    console.error('promoteAdmin error:', err);
+    res.status(500).json({ error: 'Promotion failed.' });
+  }
+};

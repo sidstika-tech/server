@@ -1,5 +1,10 @@
 const User = require('../models/user.model');
 
+/* ──────────────────────────────────────────────────────────────────
+   USAGE LIMITS — by membership plan
+   ADMINS BYPASS EVERY LIMIT. Set isAdmin=true on a user to unlock
+   unlimited access for testing.
+──────────────────────────────────────────────────────────────────── */
 const PLAN_LIMITS = {
   free:       { chatMessages: 20,   reports: 3,   marketResearch: 2,  marketingPlans: 2  },
   starter:    { chatMessages: 200,  reports: 20,  marketResearch: 15, marketingPlans: 15 },
@@ -19,46 +24,23 @@ async function freshUser(req) {
   return User.findById(req.user._id);
 }
 
-exports.checkChat = async (req, res, next) => {
-  try {
-    const user = await freshUser(req);
-    const lim = PLAN_LIMITS[user.membership.plan] || PLAN_LIMITS.free;
-    if (lim.chatMessages !== -1 && user.usage.chatMessages >= lim.chatMessages) {
-      return limitError(res, 'chat');
-    }
-    next();
-  } catch { next(); }
-};
+// One generic checker — bypasses if isAdmin, otherwise enforces the per-plan limit
+function makeChecker(limitKey, usageKey, errType) {
+  return async (req, res, next) => {
+    try {
+      const user = await freshUser(req);
+      // ── ADMIN BYPASS ──
+      if (user && user.isAdmin) return next();
+      const lim = PLAN_LIMITS[user.membership.plan] || PLAN_LIMITS.free;
+      if (lim[limitKey] !== -1 && user.usage[usageKey] >= lim[limitKey]) {
+        return limitError(res, errType);
+      }
+      next();
+    } catch { next(); }
+  };
+}
 
-exports.checkReport = async (req, res, next) => {
-  try {
-    const user = await freshUser(req);
-    const lim = PLAN_LIMITS[user.membership.plan] || PLAN_LIMITS.free;
-    if (lim.reports !== -1 && user.usage.reportsGenerated >= lim.reports) {
-      return limitError(res, 'reports');
-    }
-    next();
-  } catch { next(); }
-};
-
-exports.checkMarketResearch = async (req, res, next) => {
-  try {
-    const user = await freshUser(req);
-    const lim = PLAN_LIMITS[user.membership.plan] || PLAN_LIMITS.free;
-    if (lim.marketResearch !== -1 && user.usage.marketResearch >= lim.marketResearch) {
-      return limitError(res, 'market_research');
-    }
-    next();
-  } catch { next(); }
-};
-
-exports.checkMarketing = async (req, res, next) => {
-  try {
-    const user = await freshUser(req);
-    const lim = PLAN_LIMITS[user.membership.plan] || PLAN_LIMITS.free;
-    if (lim.marketingPlans !== -1 && user.usage.marketingPlans >= lim.marketingPlans) {
-      return limitError(res, 'marketing');
-    }
-    next();
-  } catch { next(); }
-};
+exports.checkChat            = makeChecker('chatMessages',   'chatMessages',     'chat');
+exports.checkReport          = makeChecker('reports',        'reportsGenerated', 'reports');
+exports.checkMarketResearch  = makeChecker('marketResearch', 'marketResearch',   'market_research');
+exports.checkMarketing       = makeChecker('marketingPlans', 'marketingPlans',   'marketing');

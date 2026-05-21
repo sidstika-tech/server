@@ -24,6 +24,7 @@ const userSchema = new mongoose.Schema({
     language: { type: String, default: 'en' }
   },
   isActive: { type: Boolean, default: true },
+  isAdmin: { type: Boolean, default: false },
   lastLogin: { type: Date, default: null }
 }, { timestamps: true });
 

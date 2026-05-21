@@ -65,16 +65,24 @@ async function withRetry(fn, { tries = 3, baseDelay = 700, label = 'gemini' } = 
 ──────────────────────────────────────────────────────────────────── */
 async function geminiChat(prompt, systemInstruction, options) {
   return withRetry(async () => {
+    // Auto-inject Arabic directive if caller passes language='ar' in options
+    let effectiveSystem = systemInstruction || MASTER_IDENTITY;
+    let effectivePrompt = prompt;
+    if (options && options.language === 'ar') {
+      effectiveSystem += `\n\nCRITICAL LANGUAGE REQUIREMENT: The user reading this is in Arabic mode. Write your ENTIRE response in Modern Standard Arabic (الفصحى). Include all section headers, bullets, and analysis in Arabic. Keep proper nouns (brand names, country names in some cases, URLs) in their original language. Use Arabic numerals only when natural; Western numerals are fine for currency and dates. Do NOT respond in English under any circumstances.`;
+      effectivePrompt = `[OUTPUT LANGUAGE: ARABIC — write the entire response in Arabic]\n\n${prompt}`;
+    }
+
     const model = genAI.getGenerativeModel({
       model: (options && options.model) || 'gemini-2.5-flash',
-      systemInstruction: systemInstruction || MASTER_IDENTITY,
+      systemInstruction: effectiveSystem,
       generationConfig: {
         temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
         topP: (options && options.topP !== undefined) ? options.topP : 0.95,
         ...(options && options.json ? { responseMimeType: 'application/json' } : {}),
       },
     });
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(effectivePrompt);
     return result.response.text();
   }, { tries: 3, baseDelay: 700, label: 'geminiChat' });
 }
