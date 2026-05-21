@@ -1,5 +1,5 @@
 const BusinessDNA = require('../models/businessDNA.model');
-const { openaiChat } = require('../services/gemini.service');
+const { openrouterChat } = require('../services/gemini.service');
 
 /* ══════════════════════════════════════════════════════════════════
    BUSINESS DNA — PSYCHOLOGICAL ARCHITECT & TALENT HUNTER
@@ -61,7 +61,7 @@ exports.generateDNA = async (req, res) => {
 
     const prompt = buildArchitectPrompt({ userName, country, city, ctx, answers: a });
 
-    const raw = await openaiChat(
+    const raw = await openrouterChat(
       prompt,
       `You are a Psychological Architect & Talent Hunter. You read humans between the lines. You don't match resumes to industries — you match psychology + behavior patterns + hidden strengths to a life path. You see the user more clearly than they see themselves. You write like a wise older sibling who has watched them quietly and finally tells them what you've seen. You only output valid JSON.`,
       {
