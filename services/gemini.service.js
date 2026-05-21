@@ -15,7 +15,22 @@ function getOpenAI() {
   _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   return _openaiClient;
 }
-
+let _openrouterClient = null;
+function getOpenRouter() {
+  if (_openrouterClient) return _openrouterClient;
+  if (!process.env.OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY is not set in environment variables');
+  }
+  _openrouterClient = new OpenAI({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
+    defaultHeaders: {
+      'HTTP-Referer': process.env.APP_URL || 'https://doubleeight.online', // optional but recommended by OpenRouter
+      'X-Title': 'Double Eight AI',                                    // optional, shows in OpenRouter dashboard
+    },
+  });
+  return _openrouterClient;
+}
 const MASTER_IDENTITY = `You are the AI core of Double Eight AI — the first business intelligence platform built for Arab and MENA entrepreneurs.
 
 Your users are:
@@ -262,7 +277,35 @@ async function openaiChat(prompt, systemInstruction, options) {
       top_p: (options && options.topP !== undefined) ? options.topP : 0.95,
       max_completion_tokens: (options && options.max_completion_tokens) || 4096,
     };
+async function openrouterChat(prompt, systemInstruction, options) {
+  return withRetry(async () => {
+    const client = getOpenRouter();
+    let sysMsg = systemInstruction || MASTER_IDENTITY;
+    if (options && options.language === 'ar') {
+      sysMsg += `\n\nCRITICAL LANGUAGE REQUIREMENT: The user reading this is in Arabic mode. Write your ENTIRE response in Modern Standard Arabic (الفصحى). Keep proper nouns in their original language. Do NOT respond in English under any circumstances.`;
+    }
 
+    const messages = [
+      { role: 'system', content: sysMsg },
+      { role: 'user', content: prompt },
+    ];
+
+    const params = {
+      model: (options && options.model) || 'anthropic/claude-3.5-sonnet',  // default — any OpenRouter model ID works here
+      messages,
+      temperature: (options && options.temperature !== undefined) ? options.temperature : 0.7,
+      top_p: (options && options.topP !== undefined) ? options.topP : 0.95,
+      max_tokens: (options && options.max_tokens) || 4096,
+    };
+
+    if (options && options.json) {
+      params.response_format = { type: 'json_object' };
+    }
+
+    const completion = await client.chat.completions.create(params);
+    return completion.choices?.[0]?.message?.content || '';
+  }, { tries: 3, baseDelay: 700, label: 'openrouterChat' });
+}
     // Force JSON output when requested — eliminates markdown wrapping issues
     if (options && options.json) {
       params.response_format = { type: 'json_object' };
@@ -274,4 +317,4 @@ async function openaiChat(prompt, systemInstruction, options) {
   }, { tries: 3, baseDelay: 700, label: 'openaiChat' });
 }
 
-module.exports = { geminiChat, openaiChat, generateAcademyDaily, MASTER_IDENTITY };
+module.exports = { geminiChat, openaiChat, openrouterChat, generateAcademyDaily, MASTER_IDENTITY };
