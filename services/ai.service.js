@@ -1,6 +1,6 @@
-const { openaiChat } = require('./gemini.service');
 const Groq = require('groq-sdk');
 const { geminiChat, MASTER_IDENTITY } = require('./gemini.service');
+const { openrouterChat } = require('./gemini.service');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
@@ -138,7 +138,7 @@ Never respond in English.
       : [{ role: 'user', content: String(messages) }];
 
     const completion = await client.chat.completions.create({
-      model: options.model || 'gpt-4.1-mini',
+      model: options.model || 'gpt-5.4-mini',
 
       messages: [
         {
