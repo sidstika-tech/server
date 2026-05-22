@@ -40,6 +40,7 @@ const PACKAGE_ITEMS = [
       product: dna.path?.name || dna.matchResult?.businessMatch,
       budget: dna.answers?.budget || '',
       language: lang,
+      useHaiku: true,
       ...profileContext(dna),
     })
   },
@@ -57,6 +58,7 @@ const PACKAGE_ITEMS = [
       investment: dna.answers?.budget || '',
       goals: dna.answers?.successLooksLike || '',
       language: lang,
+      useHaiku: true,
       ...profileContext(dna),
     })
   },
@@ -72,6 +74,7 @@ const PACKAGE_ITEMS = [
       targetAudience: `${dna.country} — buyers of: ${dna.path?.name || ''}`,
       style: dna.profile?.workStyle || 'Modern, Professional, Trustworthy',
       language: lang,
+      useHaiku: true,
       ...profileContext(dna),
     })
   },
@@ -86,6 +89,7 @@ const PACKAGE_ITEMS = [
       region: dna.country,
       uniqueAngle: dna.path?.unfairAdvantage || dna.profile?.realStrength || '',
       language: lang,
+      useHaiku: true,
       ...profileContext(dna),
     })
   },
@@ -102,6 +106,7 @@ const PACKAGE_ITEMS = [
       targetMargin: '40-60%',
       competitorPricing: `Market rate in ${dna.country}`,
       language: lang,
+      useHaiku: true,
       ...profileContext(dna),
     })
   },
@@ -119,6 +124,7 @@ const PACKAGE_ITEMS = [
       currentPresence: 'Starting fresh',
       timeline: '6 months',
       language: lang,
+      useHaiku: true,
       ...profileContext(dna),
     })
   },
@@ -135,6 +141,7 @@ const PACKAGE_ITEMS = [
       currentStatus: 'Pre-launch — DNA analysis complete',
       goal: dna.answers?.successLooksLike || '',
       language: lang,
+      useHaiku: true,
       ...profileContext(dna),
     })
   },
@@ -151,6 +158,7 @@ const PACKAGE_ITEMS = [
       revenueModel: 'To be defined based on path: ' + (dna.path?.pathType || 'business'),
       targetRevenue: dna.realisticRevenue || 'First profitable month',
       language: lang,
+      useHaiku: true,
       ...profileContext(dna),
     })
   },
