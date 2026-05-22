@@ -14,15 +14,15 @@ const path = require('path');
 /* ══════════════════════════════════════════════════════════════════
    AI SERVICE — PROVIDER MAP
    ─────────────────────────────────────────────────────────────────
-   AI Chat Advisor              → DeepSeek Chat V3     (honest, direct)
-   Business DNA                 → Claude 3.5 Haiku     (deep psychology)
-   Launch Package generators    → GPT-4o-mini          (structured docs)
-   Website Generator            → GPT-4o-mini          (reliable HTML)
-   Academy Founder Path/Journey → GPT-4o-mini          (educational)
-   Academy Daily Insight/Trend  → Gemini Flash 2.5     (fast + free)
-   SEO & Keywords Tool          → GPT-4o-mini          (structured)
-   All other AI Tools           → GPT-4o-mini          (structured JSON)
-   Image Generation             → xAI Grok Aurora      (text→image)
+   AI Chat Advisor              → DeepSeek Chat V3     (OpenRouter)
+   Business DNA                 → Claude 3.5 Haiku     (OpenRouter)
+   Launch Package generators    → GPT-4o-mini          (OpenRouter)
+   Website Generator            → GPT-4o-mini          (OpenRouter)
+   Academy Founder Path/Journey → GPT-4o-mini          (OpenRouter)
+   Academy Daily Insight/Trend  → Gemini 3.5 Flash     (Official Google API)
+   SEO & Keywords Tool          → GPT-4o-mini          (OpenRouter)
+   All other AI Tools           → GPT-4o-mini          (OpenRouter)
+   Image Generation             → xAI Grok Imagine     (OpenRouter)
 ══════════════════════════════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════════════════════════════
@@ -89,8 +89,10 @@ async function streamChat(messages, type, onChunk, language) {
   if (lastMsg && lastMsg.imageData) {
     // DeepSeek V3 is TEXT-ONLY. Route image analysis to Gemini Vision.
     try {
+      // Use the actual text prompt from the user message, or a default
+      const userPrompt = lastMsg.content ? lastMsg.content.replace(/\(Attached:.*\)/g, '').trim() : '';
       const visionResponse = await geminiVision(
-        lastMsg.content || 'Analyze this image and give actionable business feedback.',
+        userPrompt || 'Analyze this image and give actionable business feedback.',
         lastMsg.imageData,
         sysMsg
       );

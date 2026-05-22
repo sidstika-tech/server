@@ -111,9 +111,9 @@ async function geminiChat(prompt, sys, opts) {
     let s = sys || MASTER_IDENTITY;
     let p = prompt;
     if (opts?.language === 'ar') { s += arabicDirective('ar'); p = `[ARABIC]\n\n${prompt}`; }
-    // FIX #7: Updated model to gemini-1.5-flash (stable, fast, production-ready)
+    // FIX #7: Updated model to gemini-3.5-flash (User requested 3.5 Flash, linking official Google API)
     const model = genAI.getGenerativeModel({
-      model: opts?.model || 'gemini-1.5-flash',
+      model: opts?.model || 'gemini-3.5-flash',
       systemInstruction: s,
       generationConfig: {
         temperature: opts?.temperature ?? 0.7,
@@ -133,9 +133,9 @@ async function geminiChat(prompt, sys, opts) {
    This function takes the image as base64 + user's text question. */
 async function geminiVision(textPrompt, base64Image, sys) {
   return withRetry(async () => {
-    // FIX #7: Updated model to gemini-1.5-flash (stable, fast, production-ready)
+    // FIX #7: Updated model to gemini-3.5-flash (stable, fast, production-ready)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3.5-flash',
       systemInstruction: sys || MASTER_IDENTITY,
       generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 4096 },
     });
@@ -143,14 +143,18 @@ async function geminiVision(textPrompt, base64Image, sys) {
     // Extract the actual base64 data and mime type from the data URL
     let mimeType = 'image/jpeg';
     let rawBase64 = base64Image;
-    if (base64Image.startsWith('data:')) {
-      const match = base64Image.match(/^data:([^;]+);base64,(.+)$/);
-      if (match) { mimeType = match[1]; rawBase64 = match[2]; }
+    if (typeof base64Image === 'string' && base64Image.startsWith('data:')) {
+      const parts = base64Image.split(',');
+      if (parts.length > 1) {
+        rawBase64 = parts[1];
+        const mimeMatch = parts[0].match(/:(.*?);/);
+        if (mimeMatch) mimeType = mimeMatch[1];
+      }
     }
 
     const parts = [
-      { text: textPrompt || 'Analyze this image and provide actionable business feedback.' },
       { inlineData: { mimeType, data: rawBase64 } },
+      { text: textPrompt || 'Analyze this image and provide actionable business feedback.' },
     ];
 
     const result = await model.generateContent(parts);
@@ -176,41 +180,42 @@ async function generateImage(prompt, options = {}) {
 
     // If user uploaded a reference image, include it
     if (imageData) {
-      const base64Url = imageData.startsWith('data:')
-        ? imageData
-        : `data:image/jpeg;base64,${imageData}`;
+      let base64Url = imageData;
+      if (typeof imageData === 'string' && !imageData.startsWith('data:')) {
+        base64Url = `data:image/jpeg;base64,${imageData}`;
+      }
       content.push({ type: 'image_url', image_url: { url: base64Url } });
-      content.push({ type: 'text', text: `Edit this image based on this instruction: ${prompt}` });
+      content.push({ type: 'text', text: `Analyze or edit this image based on this instruction: ${prompt}` });
     } else {
       content.push({ type: 'text', text: `Generate an image: ${prompt}. Professional quality, high resolution, detailed, visually striking.` });
     }
 
     const response = await client.chat.completions.create({
-      model: 'x-ai/grok-2-image',
+      model: 'x-ai/grok-imagine-image-quality',
       messages: [
         { role: 'user', content }
       ],
+      modalities: ['image'],
       max_tokens: 1024,
     });
 
-    // Grok returns images in the response message
     const message = response.choices?.[0]?.message;
     const urls = [];
 
-    // Check for image URLs in content array
-    if (message?.content && Array.isArray(message.content)) {
+    // Official OpenRouter Grok Image SDK logic
+    if (message?.images) {
+      message.images.forEach(img => {
+        if (img.image_url?.url) urls.push(img.image_url.url);
+        else if (img.url) urls.push(img.url);
+      });
+    }
+
+    // Fallback: Check for image URLs in content array
+    if (!urls.length && message?.content && Array.isArray(message.content)) {
       for (const part of message.content) {
         if (part.type === 'image_url' && part.image_url?.url) {
           urls.push(part.image_url.url);
         }
-      }
-    }
-
-    // Check for images array (some API versions)
-    if (message?.images?.length) {
-      for (const img of message.images) {
-        if (img.url) urls.push(img.url);
-        else if (img.b64_json) urls.push(`data:image/png;base64,${img.b64_json}`);
       }
     }
 
@@ -223,8 +228,8 @@ async function generateImage(prompt, options = {}) {
     if (!urls.length) {
       // Fallback: try Gemini imagen
       try {
-        // FIX #7: Updated model to gemini-1.5-flash
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // FIX #7: Updated model to gemini-3.5-flash
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const result = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: `Generate an image: ${prompt}` }] }],
         });
@@ -253,9 +258,9 @@ CARD 1: MENA Markets. CARD 2: MENA Founder story. CARD 3: MENA Opportunity this 
 All MENA. Real URLs from arabnews.com/gulfnews.com/zawya.com/forbesmiddleeast.com/menabytes.com. Correct flag emoji.
 Return ONLY JSON:
 {"cards":[{"id":"card1","type":"market","icon":"📈","country":"","countryFlag":"","category":"MENA Markets","title":"","summary":"","opportunity":"","source":"","sourceUrl":""},{"id":"card2","type":"success","icon":"🏆","country":"","countryFlag":"","category":"MENA Founder Story","title":"","summary":"","opportunity":"","source":"","sourceUrl":""},{"id":"card3","type":"opportunity","icon":"🚀","country":"","countryFlag":"","category":"MENA Opportunity","title":"","summary":"","opportunity":"","source":"","sourceUrl":""}],"generatedAt":"${today}"}`;
-    // FIX #7: Updated model to gemini-1.5-flash (stable, fast, production-ready)
+    // FIX #7: Updated model to gemini-3.5-flash (stable, fast, production-ready)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3.5-flash',
       systemInstruction: 'MENA-only intelligence curator. Return ONLY valid JSON.',
       generationConfig: { temperature: 0.8, topP: 0.95, responseMimeType: 'application/json', maxOutputTokens: 2048 },
     });
