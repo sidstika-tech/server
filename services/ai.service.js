@@ -83,11 +83,24 @@ async function streamChat(messages, type, onChunk, language) {
     sysMsg += `\n\nCRITICAL: Respond ENTIRELY in Modern Standard Arabic (الفصحى). Keep brand names and URLs in original language. Never respond in English.`;
   }
 
-  // Build messages array for DeepSeek
-  const deepseekMessages = messages.map(m => ({
-    role: m.role === 'user' ? 'user' : 'assistant',
-    content: m.content,
-  }));
+  // Build messages array — support vision (imageData) on the last user message
+  const deepseekMessages = messages.map((m, idx) => {
+    const isLastUser = idx === messages.length - 1 && m.role === 'user';
+    // If this is the last user message and has an image attached, use vision format
+    if (isLastUser && m.imageData) {
+      const base64 = m.imageData.startsWith('data:')
+        ? m.imageData
+        : `data:image/jpeg;base64,${m.imageData}`;
+      return {
+        role: 'user',
+        content: [
+          { type: 'text', text: m.content || 'Please analyze this image.' },
+          { type: 'image_url', image_url: { url: base64 } },
+        ],
+      };
+    }
+    return { role: m.role === 'user' ? 'user' : 'assistant', content: m.content };
+  });
 
   return deepseekStream(deepseekMessages, sysMsg, onChunk);
 }
@@ -597,70 +610,97 @@ function extractHTML(raw) {
 }
 
 async function generateWebsiteCreation(inputs) {
-  // Use the premium template for high-end design
-  const template = loadTemplate('premium');
+  const template = loadTemplate(inputs.content || 'Business / Company');
   const isAr = inputs.language === 'ar';
-  const schemeInfo = COLOR_SCHEMES[inputs.colors] || COLOR_SCHEMES['Dark & Gold (Luxury)'];
+  const name = (inputs.businessName || 'My Business').trim();
 
-  const websitePrompt = `You are a world-class web designer and developer. Your goal is to create a HIGH-END, premium 8-section website.
+  // ── STEP 1: Deterministic replace (instant, zero AI, always works) ──
+  let html = applyFallbackEdits(template, inputs);
+  if (isAr) {
+    html = html.replace(/<html([^>]*)lang="en"/, '<html$1lang="ar" dir="rtl"');
+    html = html.replace(/<html([^>]*)>(?![^]*dir=)/, '<html$1 dir="rtl">');
+  }
 
-STRICT DESIGN RULES:
-1. HIGH DESIGN: Use modern layouts, overlapping elements, high-quality spacing, and professional typography.
-2. 8 SECTIONS: The website MUST include:
-   - Hero with Carousel (Animated transitions)
-   - Services Grid (High-style cards with icons and hover effects)
-   - Performance Dashboard (Visual stats, charts, and data grids)
-   - Visual Gallery (Modern masonry or grid layout)
-   - Client Reviews (Premium testimonial slider)
-   - Case Studies / Examples (Detailed project showcases)
-   - Pricing / Investment Plans (Clear, professional comparison)
-   - Contact & Footer (Modern form and structured footer)
-3. ANIMATIONS: Use the [data-reveal] attribute and CSS transitions for smooth entrance effects.
-4. INTERACTIVE: Ensure the carousel, dashboard charts, and sliders are fully functional with the provided JavaScript.
-5. ASSETS: Use high-quality Unsplash images relevant to the business type.
-
-CUSTOMIZE THIS PREMIUM TEMPLATE:
-Business Name: ${inputs.businessName || 'My Business'}
-Type: ${inputs.content || 'Business'}
-Language: ${isAr ? 'Arabic — set dir="rtl" on html tag, translate ALL text to Arabic' : 'English'}
-Color Scheme: ${inputs.colors || 'Dark & Gold'}
-  - Primary: ${schemeInfo.primary}
-  - Accent: ${schemeInfo.accent}
-  - Background: ${schemeInfo.bg}
-  - Text: ${schemeInfo.text}
-
-WHAT TO CHANGE:
-- Replace {{BRAND_NAME}} with: ${inputs.businessName || 'My Business'}
-- Replace {{PRIMARY_COLOR}}, {{ACCENT_COLOR}}, {{BG_COLOR}}, {{TEXT_COLOR}} with the hex codes provided.
-- Rewrite ALL headlines and body text to be professional, persuasive, and specific to a ${inputs.content} business.
-- Ensure all 8 sections are fully populated with relevant content.
-${isAr ? '- Set html dir="rtl", translate all text to Arabic, ensure RTL layout is perfect.' : ''}
-
-THE TEMPLATE:
-${template}
-
-RETURN ONLY THE COMPLETE EDITED HTML FILE. NO MARKDOWN. NO EXPLANATIONS.`;
-
+  // ── STEP 2: Ask DeepSeek to generate ONLY business copy as JSON ──
+  // (~400 tokens in, ~600 tokens out — never truncates, always fast)
   try {
-    const raw = await openaiChat(
-      websitePrompt,
-      'You are an expert web developer. Output ONLY the complete HTML file, nothing else. No explanations, no markdown, no code fences. Just the HTML.',
-      { temperature: 0.3, maxTokens: 8192 }
+    const copyPrompt = `Write website copy for this business. Return ONLY valid JSON.
+
+Business: ${name}
+Type: ${inputs.content || 'Business / Company'}
+Extra details: ${inputs.extraDetails || 'none'}
+${isAr ? 'Write ALL text in Arabic.' : 'Write in English.'}
+
+JSON structure:
+{
+  "navBrand": "brand/logo text",
+  "heroHeadline": "compelling headline 8-12 words",
+  "heroSub": "2-sentence subtitle describing the business value",
+  "cta1": "primary button 2-4 words",
+  "cta2": "secondary button 2-3 words",
+  "feat1Title": "feature 1 title", "feat1Desc": "feature 1 description 1-2 sentences",
+  "feat2Title": "feature 2 title", "feat2Desc": "feature 2 description",
+  "feat3Title": "feature 3 title", "feat3Desc": "feature 3 description",
+  "aboutTitle": "about section title",
+  "aboutText": "2-3 sentences about the company",
+  "t1": "testimonial 1 (2 sentences)", "t1Name": "name", "t1Role": "title, company",
+  "t2": "testimonial 2", "t2Name": "name", "t2Role": "title, company",
+  "t3": "testimonial 3", "t3Name": "name", "t3Role": "title, company",
+  "contactTitle": "contact section title",
+  "contactSub": "contact subtitle 1 sentence",
+  "footerTagline": "footer brand description 1 sentence"
+}`;
+
+    const raw = await deepseekChat(
+      copyPrompt,
+      'Professional copywriter. Return ONLY valid JSON. No markdown.',
+      { temperature: 0.7, json: true, maxTokens: 1200 }
     );
 
-    const html = extractHTML(raw);
+    let copy;
+    try {
+      copy = JSON.parse(String(raw).trim().replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/i,'').trim());
+    } catch { copy = null; }
 
-    // Validate minimum size (template is ~25KB, edited should be at least 50% of that)
-    if (html.length < template.length * 0.4) {
-      console.warn('Website generation: HTML too short, applying fallback edits');
-      return applyFallbackEdits(template, inputs);
+    if (copy) {
+      // Inject copy into the deterministically-replaced template
+      const rep = (from, to) => { if (to) html = html.split(from).join(to); };
+
+      // Nav brand
+      rep('{{BRAND_NAME}}', copy.navBrand || name);
+
+      // Hero
+      if (copy.heroHeadline) {
+        html = html.replace(/<h1[^>]*>([^<]*<[^>]*>[^<]*<\/[^>]*>)?[^<]*<\/h1>/i,
+          `<h1>${copy.heroHeadline}</h1>`);
+      }
+      if (copy.heroSub) {
+        html = html.replace(/<p class="hero[^"]*">[^<]*<\/p>/i, `<p>${copy.heroSub}</p>`);
+      }
+      rep('Start Today →', copy.cta1 || 'Get Started');
+      rep('Learn More', copy.cta2 || 'Learn More');
+
+      // Features — replace heading text nodes carefully
+      ['1','2','3'].forEach(n => {
+        const t = copy[`feat${n}Title`];
+        const d = copy[`feat${n}Desc`];
+        if (t) html = html.replace(new RegExp(`feat${n}-title`), t);
+        if (d) html = html.replace(new RegExp(`feat${n}-desc`), d);
+      });
+
+      // About
+      if (copy.aboutTitle) html = html.replace(/Built for businesses[^<]*/i, copy.aboutTitle);
+      if (copy.aboutText) html = html.replace(/We help ambitious[^<]*/i, copy.aboutText);
+
+      // Footer
+      if (copy.footerTagline) html = html.replace(/Premium strategy[^<]*/i, copy.footerTagline);
     }
-
-    return html;
   } catch (err) {
-    console.error('Website generation failed, using fallback:', err.message);
-    return applyFallbackEdits(template, inputs);
+    console.warn('Website copy generation failed, using template defaults:', err.message);
+    // Fallback is already applied above — still a working site
   }
+
+  return html;
 }
 
 // Legacy alias
