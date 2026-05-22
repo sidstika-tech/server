@@ -625,14 +625,15 @@ function extractHTML(raw) {
 async function generateWebsiteCreation(inputs) {
   const template = loadTemplate(inputs.content || 'Business / Company');
   const isAr = inputs.language === 'ar';
-  const name = (inputs.businessName || 'My Business').trim();
 
-  // STEP 0: Deterministic base replace (instant — colors, brand name, fonts)
   let html = applyFallbackEdits(template, inputs);
+
   if (isAr) {
-    html = html.replace(/<html([^>]*)lang="en"/, '<html$1lang="ar" dir="rtl"');
-    html = html.replace(/<html([^>]*)>(?![^]*dir=)/, '<html$1 dir="rtl">');
+    html = html.replace(/<html([^>]*)lang="en"/, '<html$1lang="ar" dir="rtl">');
   }
+
+  return html; // 🔥 REQUIRED
+}
 
   /* ═══════════════════════════════════════════════════════════
      STEP 1 — MODEL 1 (DeepSeek): Read user input → write creative brief
