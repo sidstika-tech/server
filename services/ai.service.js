@@ -140,7 +140,8 @@ function getCurrency(country) {
 ══════════════════════════════════════════════════════════════════ */
 
 async function generateBrandKit(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Create a complete Brand Identity Kit for a MENA business.
 
 Business: ${inputs.businessName}
@@ -163,7 +164,8 @@ Every recommendation must be immediately usable without a designer.`, MASTER_IDE
 }
 
 async function generateBusinessPlan(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Write a complete Business Plan for a MENA entrepreneur.
 
 Business: ${inputs.businessName}
@@ -190,7 +192,8 @@ Be specific to ${inputs.location}. Use local currency. Reference real platforms,
 }
 
 async function generateCompetitorMatrix(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Build a Competitor Analysis for a MENA business.
 
 Business: ${inputs.businessName}
@@ -211,7 +214,8 @@ Use real competitors. Name them. Be honest about who's strong and who's weak.`, 
 }
 
 async function generatePricingCalculator(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Design a Pricing Strategy for a MENA business.
 
 Business: ${inputs.businessName}
@@ -235,7 +239,8 @@ Use local currency. Be specific to the market.`, MASTER_IDENTITY, { language: in
 }
 
 async function generateLaunchRoadmap(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Create a 30-Day Launch Roadmap for a MENA entrepreneur.
 
 Business: ${inputs.businessName}
@@ -257,7 +262,8 @@ End with: Month 2 priorities.`, MASTER_IDENTITY, { language: inputs.language });
 }
 
 async function generateContract(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Draft a professional Business Contract for a MENA business.
 
 Business: ${inputs.businessName}
@@ -270,7 +276,8 @@ Note: This is a template. Recommend they have a local lawyer review before use. 
 }
 
 async function generateBudgetEstimator(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Build a 6-Month Financial Model for a MENA business.
 
 Business: ${inputs.businessType}
@@ -295,7 +302,8 @@ Be brutally honest. Use real costs for ${inputs.location}. Don't inflate revenue
 }
 
 async function generatePitchDeck(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Write a complete Pitch Deck script for a MENA entrepreneur.
 
 Business: ${inputs.businessName}
@@ -310,7 +318,8 @@ Tailored for MENA investors who care about: execution speed, market size, founde
 }
 
 async function generateAdCopy(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Write high-converting Ad Copy for a MENA business.
 
 Business: ${inputs.businessName}
@@ -331,7 +340,8 @@ MENA ad behavior: WhatsApp is the conversion channel. Instagram is discovery. Go
 
 /* SEO — GPT-4o-mini per spec */
 async function generateSeoKeywords(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Create a complete SEO Strategy for a MENA business.
 
 Business: ${inputs.businessName}
@@ -357,7 +367,8 @@ Deliver:
 }
 
 async function generateColdEmail(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Write Cold Outreach sequences for a MENA entrepreneur.
 
 Business: ${inputs.businessName}
@@ -375,7 +386,8 @@ MENA outreach rules: warmth before business, WhatsApp > email for SMBs, LinkedIn
 }
 
 async function generateSalesScript(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Write Sales Scripts for a MENA business.
 
 Business: ${inputs.businessName}
@@ -394,7 +406,8 @@ Deliver:
 }
 
 async function generateMarketResearch(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Conduct Market Intelligence Research for a MENA business.
 
 Niche: ${inputs.niche || inputs.product}
@@ -416,7 +429,8 @@ Deliver:
 }
 
 async function generateMarketingStrategy(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Build a complete Marketing Strategy for a MENA business.
 
 Business: ${inputs.businessName}
@@ -441,7 +455,8 @@ Deliver:
 }
 
 async function generateMarketStudy(inputs) {
-  return openaiChat(`${psychProfileBlock(inputs)}
+  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai(`${psychProfileBlock(inputs)}
 Conduct a focused Market Study.
 
 Topic: ${inputs.topic || inputs.niche}
@@ -476,7 +491,8 @@ Hidden Strength: ${dnaContext.realStrength || 'Not set'}
 Avoid at all cost: ${dnaContext.avoidAtAllCost || 'Not set'}
 ═══════════════════════════════════════` : '';
 
-  return openaiChat(`${psychCtx}
+  const _ai2 = inputs.useHaiku ? openrouterChat : openaiChat;
+  return _ai2(`${psychCtx}
 Generate an interactive learning session for the Double Eight AI Academy.
 
 Session: ${sessionData.title}
@@ -574,68 +590,111 @@ function extractHTML(raw) {
 async function generateWebsiteCreation(inputs) {
   const template = loadTemplate(inputs.content || 'Business / Company');
   const isAr = inputs.language === 'ar';
-  const schemeInfo = COLOR_SCHEMES[inputs.colors] || COLOR_SCHEMES['Dark & Gold (Luxury)'];
+  const name = inputs.businessName || 'My Business';
 
-  const websitePrompt = `You are an expert web developer. Your ONLY job is to return a complete, valid HTML file.
+  // STEP 1: Deterministic replace — instant, zero AI needed, always works
+  let html = applyFallbackEdits(template, inputs);
 
-STRICT RULES:
-1. Return ONLY the HTML file. Start with <!DOCTYPE html>. End with </html>.
-2. DO NOT include any text before <!DOCTYPE html> or after </html>.
-3. DO NOT use markdown code fences (no \`\`\`html).
-4. DO NOT truncate or cut off the HTML — return the COMPLETE file.
-5. The output MUST be a working website when opened in a browser.
-
-CUSTOMIZE THIS TEMPLATE for the following business:
-
-Business Name: ${inputs.businessName || 'My Business'}
-Type: ${inputs.content || 'Business'}
-Language: ${isAr ? 'Arabic — set dir="rtl" on html tag, translate ALL text to Arabic' : 'English'}
-Color Scheme: ${inputs.colors || 'Dark & Gold'}
-  - Primary color: ${schemeInfo.primary}
-  - Accent color: ${schemeInfo.accent}
-  - Background: ${schemeInfo.bg}
-  - Text: ${schemeInfo.text}
-Fonts: ${inputs.fonts || 'Modern Sans-Serif (Outfit from Google Fonts)'}
-Sections: ${inputs.sections || 'Full website — hero, about, services, testimonials, contact'}
-Interactive features: ${inputs.interactive || 'Smooth scroll, mobile responsive'}
-Extra details: ${inputs.extraDetails || 'None'}
-
-WHAT TO CHANGE in the template:
-- Replace {{BRAND_NAME}}, {{BUSINESS_NAME}}, {{COMPANY_NAME}} with: ${inputs.businessName || 'My Business'}
-- Replace {{PRIMARY_COLOR}} with: ${schemeInfo.primary}
-- Replace {{ACCENT_COLOR}} with: ${schemeInfo.accent}
-- Replace {{BG_COLOR}} with: ${schemeInfo.bg}
-- Replace {{TEXT_COLOR}} with: ${schemeInfo.text}
-- Update all headline text, body copy, and section content to match the business
-- Update navigation links to match the sections
-- Keep all CSS and JavaScript working
-${isAr ? '- Set html dir="rtl", translate all visible text to Arabic, adjust text-align for RTL' : ''}
-
-THE TEMPLATE TO EDIT:
-${template}
-
-RETURN ONLY THE COMPLETE EDITED HTML FILE. NOTHING ELSE.`;
-
+  // STEP 2: Ask GPT to generate ONLY the text content (headlines, taglines, sections)
+  // Then we inject those texts into the already-colored template. This way GPT
+  // never has to output 25KB of HTML — just ~500 words of business copy.
   try {
-    const raw = await openaiChat(
-      websitePrompt,
-      'You are an expert web developer. Output ONLY the complete HTML file, nothing else. No explanations, no markdown, no code fences. Just the HTML.',
-      { temperature: 0.3, maxTokens: 8192 }
+    const copyPrompt = `Generate website copy for this business. Return ONLY valid JSON, no markdown.
+
+Business: ${name}
+Type: ${inputs.content || 'Business'}
+Sections: ${inputs.sections || 'Hero, About, Features, Pricing, Testimonials, Contact'}
+Extra details: ${inputs.extraDetails || 'None'}
+${isAr ? 'LANGUAGE: Write ALL text in Arabic.' : 'LANGUAGE: English'}
+
+Return JSON:
+{
+  "heroTag": "short badge text (5-8 words, e.g. 'Trusted by 1,000+ businesses')",
+  "heroHeadline": "main headline (8-12 words, powerful, specific to this business)",
+  "heroAccentWord": "1-2 words from the headline to emphasize (the bold/colored part)",
+  "heroSubtext": "hero paragraph (2 sentences describing what the business does)",
+  "ctaPrimary": "primary button text (2-4 words)",
+  "ctaSecondary": "secondary button text (2-3 words)",
+  "features": [
+    {"icon": "emoji", "title": "feature title", "desc": "feature description (2 sentences)"},
+    {"icon": "emoji", "title": "feature title", "desc": "feature description"},
+    {"icon": "emoji", "title": "feature title", "desc": "feature description"}
+  ],
+  "aboutTitle": "about section headline",
+  "aboutP1": "about paragraph 1 (2-3 sentences — brand story)",
+  "aboutP2": "about paragraph 2 (2-3 sentences — mission)",
+  "stats": [
+    {"num": "1,000+", "label": "stat label"},
+    {"num": "$50M+", "label": "stat label"},
+    {"num": "12+", "label": "stat label"},
+    {"num": "98%", "label": "stat label"}
+  ],
+  "testimonials": [
+    {"quote": "testimonial text (2 sentences)", "name": "First Last", "title": "Role, Company"},
+    {"quote": "testimonial text", "name": "First Last", "title": "Role, Company"},
+    {"quote": "testimonial text", "name": "First Last", "title": "Role, Company"}
+  ],
+  "contactHeadline": "contact section title",
+  "contactSubtext": "contact section subtitle (1 sentence)",
+  "footerTagline": "footer brand description (1 sentence)"
+}`;
+
+    const raw = await deepseekChat(copyPrompt,
+      'You are a professional copywriter. Return ONLY valid JSON. Write compelling, specific copy for real businesses.',
+      { temperature: 0.7, json: true, maxTokens: 2048, language: inputs.language }
     );
 
-    const html = extractHTML(raw);
+    let copy;
+    try {
+      const clean = String(raw).trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+      copy = JSON.parse(clean);
+    } catch { copy = null; }
 
-    // Validate minimum size (template is ~25KB, edited should be at least 50% of that)
-    if (html.length < template.length * 0.4) {
-      console.warn('Website generation: HTML too short, applying fallback edits');
-      return applyFallbackEdits(template, inputs);
+    if (copy) {
+      // Inject the AI-generated copy into the template
+      // Hero section
+      if (copy.heroTag) html = html.replace(/✦[^<]*<\/span>/, `✦ ${copy.heroTag}</span>`);
+      if (copy.heroHeadline && copy.heroAccentWord) {
+        const headlineHtml = copy.heroHeadline.replace(copy.heroAccentWord, `<span class="accent">${copy.heroAccentWord}</span>`);
+        html = html.replace(/<h1>[^]*?<\/h1>/, `<h1>${headlineHtml}</h1>`);
+      }
+      if (copy.heroSubtext) html = html.replace(/<p>We help ambitious[^]*?<\/p>/, `<p>${copy.heroSubtext}</p>`);
+      if (copy.ctaPrimary) html = html.replace(/Start Today →/, copy.ctaPrimary);
+      if (copy.ctaSecondary) html = html.replace(/Learn More/, copy.ctaSecondary);
+
+      // Features
+      if (copy.features?.length >= 3) {
+        copy.features.forEach((f, i) => {
+          const featureBlocks = html.match(/<div class="feature fade-up">[\s\S]*?<\/div>\s*<\/div>/g);
+          if (featureBlocks?.[i]) {
+            let block = featureBlocks[i];
+            block = block.replace(/<div class="feature-icon">[^<]*<\/div>/, `<div class="feature-icon">${f.icon}</div>`);
+            block = block.replace(/<h3>[^<]*<\/h3>/, `<h3>${f.title}</h3>`);
+            block = block.replace(/<p>[^<]*<\/p>/, `<p>${f.desc}</p>`);
+            html = html.replace(featureBlocks[i], block);
+          }
+        });
+      }
+
+      // About
+      if (copy.aboutTitle) html = html.replace(/Built for businesses that refuse to settle/, copy.aboutTitle);
+
+      // Footer
+      if (copy.footerTagline) html = html.replace(/Premium strategy and execution[^<]*/, copy.footerTagline);
+
+      // RTL for Arabic
+      if (isAr) {
+        html = html.replace(/<html lang="en">/, '<html lang="ar" dir="rtl">');
+        // Swap some text-align if needed
+        html = html.replace(/text-align:\s*left/g, 'text-align:right');
+      }
     }
-
-    return html;
   } catch (err) {
-    console.error('Website generation failed, using fallback:', err.message);
-    return applyFallbackEdits(template, inputs);
+    console.warn('Website AI copy generation failed, using template defaults:', err.message);
+    // Fallback is already applied — the template with replaced brand/colors works fine
   }
+
+  return html;
 }
 
 // Legacy alias
