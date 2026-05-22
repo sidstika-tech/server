@@ -178,16 +178,23 @@ async function generateImage(prompt, options = {}) {
     }
 
     const response = await client.chat.completions.create({
-      model: 'x-ai/grok-2-image',
+      model: "x-ai/grok-imagine-image-quality",
       messages: [
-        { role: 'user', content }
-      ],
-      max_tokens: 1024,
-    });
+    {
+      role: "user",
+      content: "Generate a beautiful sunset over mountains"
+    }
+  ],
+  modalities: ["image"]
+});
 
-    // Grok returns images in the response message
-    const message = response.choices?.[0]?.message;
-    const urls = [];
+const message = result.choices[0].message;
+if (message.images) {
+  message.images.forEach((image, index) => {
+    const imageUrl = image.image_url.url;
+    console.log(`Generated image ${index + 1}: ${imageUrl.substring(0, 50)}...`);
+  });
+};
 
     // Check for image URLs in content array
     if (message?.content && Array.isArray(message.content)) {
