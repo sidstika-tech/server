@@ -19,7 +19,7 @@ const path = require('path');
    Launch Package generators    → GPT-4o-mini          (structured docs)
    Website Generator            → GPT-4o-mini          (reliable HTML)
    Academy Founder Path/Journey → GPT-4o-mini          (educational)
-   Academy Daily Insight/Trend  → Gemini Flash 2.5     (fast + free)
+   Academy Daily Insight/Trend  → Gemini Flash 3.5     (fast + free)
    SEO & Keywords Tool          → GPT-4o-mini          (structured)
    All other AI Tools           → GPT-4o-mini          (structured JSON)
    Image Generation             → xAI Grok Aurora      (text→image)
