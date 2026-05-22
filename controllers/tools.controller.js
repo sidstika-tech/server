@@ -45,7 +45,9 @@ exports.generate = async (req, res) => {
     const content = await GENERATORS[toolType](sanitized);
     const label = TOOL_LABELS[toolType] || toolType;
     const title = `${label} — ${sanitized.businessName || sanitized.niche || sanitized.industry || 'My Business'}`;
-    const htmlContent = exportService.generateHTML(title, content);
+    
+    // For website creation, the content IS the HTML. For others, we generate a report wrapper.
+    const htmlContent = toolType === 'website_creation' ? content : exportService.generateHTML(title, content);
 
     const report = await Report.create({
       user: req.user._id, title, type: toolType, content, htmlContent, inputs: sanitized,
@@ -67,10 +69,12 @@ exports.generateImage = async (req, res) => {
       return res.status(400).json({ error: 'Image prompt is required' });
     }
 
+    const { imageData } = req.body;
     const cleanPrompt = String(prompt).trim().slice(0, 1000);
     const imageUrls = await aiService.generateImageFromText(cleanPrompt, {
       size: size || '1024x1024',
       n: Math.min(n || 1, 4),
+      imageData: imageData // Pass base64 image if present
     });
 
     await User.findByIdAndUpdate(req.user._id, { $inc: { 'usage.reportsGenerated': 1 } });

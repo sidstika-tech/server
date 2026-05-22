@@ -49,15 +49,11 @@ exports.sendMessage = async (req, res) => {
 
     // Build message content — support image uploads
     let messageContent = cleanMessage;
-    if (imageData) {
-      // imageData is base64 string from frontend
-      // DeepSeek Chat V3 supports vision — attach image description to context
-      messageContent = cleanMessage
-        ? `${cleanMessage}\n\n[User attached an image for analysis]`
-        : '[User attached an image for analysis]';
+    if (imageData && !cleanMessage) {
+      messageContent = '[User attached an image for analysis]';
     }
 
-    if (!messageContent) return res.status(400).json({ error: 'Message required' });
+    if (!messageContent && !imageData) return res.status(400).json({ error: 'Message required' });
 
     let session;
     if (sessionId) {
@@ -67,6 +63,8 @@ exports.sendMessage = async (req, res) => {
       session = await ChatSession.create({ user: req.user._id, messages: [] });
     }
 
+    // Store the message. Note: We don't store the full base64 in DB to save space, 
+    // but we pass it to the AI for the current turn.
     session.messages.push({ role: 'user', content: messageContent });
 
     // Keep last 20 messages for context
@@ -74,6 +72,11 @@ exports.sendMessage = async (req, res) => {
       role: m.role,
       content: m.content,
     }));
+    
+    // Attach imageData to the last message for the AI call
+    if (imageData && chatHistory.length > 0) {
+      chatHistory[chatHistory.length - 1].imageData = imageData;
+    }
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');

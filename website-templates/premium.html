@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{BRAND_NAME}} — Premium Digital Experience</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root {
+  --primary: {{PRIMARY_COLOR}};
+  --accent: {{ACCENT_COLOR}};
+  --bg: {{BG_COLOR}};
+  --text: {{TEXT_COLOR}};
+  --muted: rgba(255,255,255,0.6);
+  --surface: rgba(255,255,255,0.03);
+  --surface2: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.1);
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --font-main: 'Outfit', sans-serif;
+  --font-heading: 'Bebas Neue', cursive;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { 
+  font-family: var(--font-main); 
+  background: var(--bg); 
+  color: var(--text); 
+  line-height: 1.6; 
+  overflow-x: hidden;
+}
+
+/* ── UTILITIES ── */
+.container { max-width: 1300px; margin: 0 auto; padding: 0 5%; }
+.section { padding: 100px 0; position: relative; }
+.section-header { text-align: center; margin-bottom: 60px; }
+.tag { 
+  display: inline-block; padding: 6px 16px; background: var(--surface2); 
+  border: 1px solid var(--border); border-radius: 30px; font-size: 12px; 
+  color: var(--primary); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 15px;
+}
+h2 { font-family: var(--font-heading); font-size: 60px; letter-spacing: 2px; line-height: 1; margin-bottom: 20px; }
+.sub { color: var(--muted); font-size: 18px; max-width: 700px; margin: 0 auto; }
+
+/* ── NAVIGATION ── */
+nav { 
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 20px 0;
+  background: rgba(0,0,0,0.2); backdrop-filter: blur(15px); border-bottom: 1px solid var(--border);
+  transition: 0.3s;
+}
+nav.scrolled { padding: 12px 0; background: rgba(0,0,0,0.8); }
+nav .container { display: flex; align-items: center; justify-content: space-between; }
+.logo { font-family: var(--font-heading); font-size: 32px; color: var(--primary); letter-spacing: 1px; }
+.nav-links { display: flex; gap: 30px; align-items: center; }
+.nav-links a { font-size: 14px; font-weight: 600; color: var(--muted); transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; }
+.nav-links a:hover { color: var(--primary); }
+.btn-cta { 
+  padding: 12px 24px; background: var(--primary); color: #000; border-radius: 30px; 
+  font-weight: 700; font-size: 14px; transition: 0.3s; border: none; cursor: pointer;
+}
+.btn-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(245,158,11,0.3); }
+
+/* ── 1. HERO CAROUSEL ── */
+.hero-slider { height: 100vh; position: relative; overflow: hidden; }
+.slide { 
+  position: absolute; inset: 0; opacity: 0; transition: 1s ease-in-out; 
+  display: flex; align-items: center; background-size: cover; background-position: center;
+}
+.slide.active { opacity: 1; }
+.slide::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to right, rgba(0,0,0,0.9), transparent); }
+.slide-content { position: relative; z-index: 10; max-width: 800px; padding: 0 5%; }
+.slide h1 { font-family: var(--font-heading); font-size: 100px; line-height: 0.9; margin-bottom: 20px; letter-spacing: 2px; }
+.slide p { font-size: 20px; color: var(--muted); margin-bottom: 30px; max-width: 600px; }
+
+/* ── 2. SERVICES GRID ── */
+.services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+.service-card { 
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); 
+  padding: 40px; transition: 0.4s; position: relative; overflow: hidden;
+}
+.service-card:hover { transform: translateY(-10px); border-color: var(--primary); background: var(--surface2); }
+.service-icon { font-size: 40px; color: var(--primary); margin-bottom: 20px; }
+.service-card h3 { font-size: 24px; margin-bottom: 15px; }
+
+/* ── 3. DASHBOARD / STATS ── */
+.dashboard-section { background: linear-gradient(180deg, transparent, rgba(245,158,11,0.05)); }
+.dashboard-wrap { 
+  background: #0a0a0a; border: 1px solid var(--border); border-radius: var(--radius-lg); 
+  padding: 40px; display: grid; grid-template-columns: 1fr 1.5fr; gap: 40px; align-items: center;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+}
+.dash-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.stat-card { background: var(--surface); padding: 25px; border-radius: var(--radius-md); border: 1px solid var(--border); }
+.stat-val { font-family: var(--font-heading); font-size: 40px; color: var(--primary); }
+.stat-label { font-size: 14px; color: var(--muted); }
+.dash-visual { position: relative; height: 300px; background: var(--surface); border-radius: var(--radius-md); overflow: hidden; }
+.chart-bar { position: absolute; bottom: 0; width: 40px; background: var(--primary); border-radius: 5px 5px 0 0; transition: 1s; }
+
+/* ── 4. GRIDS / GALLERY ── */
+.gallery-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 300px); gap: 20px; }
+.gallery-item { border-radius: var(--radius-md); overflow: hidden; position: relative; }
+.gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
+.gallery-item:hover img { transform: scale(1.1); }
+.gallery-item:nth-child(1) { grid-column: span 2; grid-row: span 2; }
+.gallery-item:nth-child(2) { grid-column: span 2; }
+
+/* ── 5. REVIEWS / TESTIMONIALS ── */
+.reviews-slider { display: flex; gap: 30px; overflow-x: auto; padding: 20px 0; scrollbar-width: none; }
+.review-card { 
+  min-width: 400px; background: var(--surface); padding: 40px; border-radius: var(--radius-lg); 
+  border: 1px solid var(--border); position: relative;
+}
+.review-stars { color: var(--primary); margin-bottom: 15px; }
+.review-text { font-style: italic; margin-bottom: 20px; }
+.reviewer { display: flex; align-items: center; gap: 15px; }
+.reviewer-img { width: 50px; height: 50px; border-radius: 50%; background: var(--primary); }
+
+/* ── 6. EXAMPLES / PORTFOLIO ── */
+.portfolio-item { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; margin-bottom: 100px; }
+.portfolio-item:nth-child(even) { direction: rtl; }
+.portfolio-item:nth-child(even) .portfolio-text { direction: ltr; }
+.portfolio-img { border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); }
+.portfolio-img img { width: 100%; }
+
+/* ── 7. PRICING / PLANS ── */
+.pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+.price-card { 
+  background: var(--surface); padding: 50px 40px; border-radius: var(--radius-lg); 
+  border: 1px solid var(--border); text-align: center; transition: 0.3s;
+}
+.price-card.popular { border-color: var(--primary); transform: scale(1.05); background: rgba(245,158,11,0.05); }
+.price-val { font-family: var(--font-heading); font-size: 70px; color: var(--primary); margin: 20px 0; }
+
+/* ── 8. CONTACT / FOOTER ── */
+.contact-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; }
+.contact-form input, .contact-form textarea { 
+  width: 100%; background: var(--surface); border: 1px solid var(--border); 
+  padding: 15px 20px; border-radius: 12px; color: #fff; margin-bottom: 20px; outline: none;
+}
+.contact-form input:focus { border-color: var(--primary); }
+
+footer { padding: 80px 0 40px; border-top: 1px solid var(--border); background: #050505; }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 60px; }
+
+/* ── ANIMATIONS ── */
+[data-reveal] { opacity: 0; transform: translateY(30px); transition: 1s; }
+[data-reveal].active { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 900px) {
+  h2 { font-size: 40px; }
+  .slide h1 { font-size: 60px; }
+  .dashboard-wrap, .contact-wrap, .portfolio-item { grid-template-columns: 1fr; }
+  .gallery-grid { grid-template-columns: 1fr 1fr; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav id="navbar">
+  <div class="container">
+    <div class="logo">{{BRAND_NAME}}</div>
+    <div class="nav-links">
+      <a href="#services">Services</a>
+      <a href="#dashboard">Insights</a>
+      <a href="#portfolio">Work</a>
+      <a href="#pricing">Pricing</a>
+      <button class="btn-cta">Contact Us</button>
+    </div>
+  </div>
+</nav>
+
+<section class="hero-slider">
+  <div class="slide active" style="background-image: url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2000')">
+    <div class="slide-content">
+      <span class="tag">Premium Experience</span>
+      <h1>Elevate Your <br><span style="color:var(--primary)">Business</span></h1>
+      <p>We combine cutting-edge technology with strategic design to build digital products that scale.</p>
+      <button class="btn-cta">Explore Our Work</button>
+    </div>
+  </div>
+  <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&q=80&w=2000')">
+    <div class="slide-content">
+      <span class="tag">Strategic Growth</span>
+      <h1>Data Driven <br><span style="color:var(--primary)">Results</span></h1>
+      <p>Transforming complex data into actionable insights for modern entrepreneurs.</p>
+      <button class="btn-cta">View Dashboard</button>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="services">
+  <div class="container">
+    <div class="section-header" data-reveal>
+      <span class="tag">Our Expertise</span>
+      <h2>Core Services</h2>
+      <p class="sub">High-performance solutions tailored for your specific market needs.</p>
+    </div>
+    <div class="services-grid">
+      <div class="service-card" data-reveal>
+        <div class="service-icon"><i class="fas fa-rocket"></i></div>
+        <h3>Rapid Launch</h3>
+        <p>Go from concept to market in record time with our optimized deployment pipeline.</p>
+      </div>
+      <div class="service-card" data-reveal>
+        <div class="service-icon"><i class="fas fa-chart-line"></i></div>
+        <h3>Growth Strategy</h3>
+        <p>Scalable marketing and sales frameworks designed for long-term sustainability.</p>
+      </div>
+      <div class="service-card" data-reveal>
+        <div class="service-icon"><i class="fas fa-shield-halved"></i></div>
+        <h3>Enterprise Security</h3>
+        <p>Bank-grade protection for your data and your customers' privacy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section dashboard-section" id="dashboard">
+  <div class="container">
+    <div class="dashboard-wrap" data-reveal>
+      <div>
+        <span class="tag">Real-time Data</span>
+        <h2>Performance <br>Dashboard</h2>
+        <p style="color:var(--muted); margin-bottom: 30px;">Monitor your growth with our integrated analytics suite. Every metric that matters, in one place.</p>
+        <div class="dash-stats">
+          <div class="stat-card">
+            <div class="stat-val">98%</div>
+            <div class="stat-label">Uptime</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">2.4s</div>
+            <div class="stat-label">Avg. Load</div>
+          </div>
+        </div>
+      </div>
+      <div class="dash-visual">
+        <div class="chart-bar" style="left: 10%; height: 60%;"></div>
+        <div class="chart-bar" style="left: 25%; height: 85%;"></div>
+        <div class="chart-bar" style="left: 40%; height: 45%;"></div>
+        <div class="chart-bar" style="left: 55%; height: 95%;"></div>
+        <div class="chart-bar" style="left: 70%; height: 70%;"></div>
+        <div class="chart-bar" style="left: 85%; height: 80%;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="portfolio">
+  <div class="container">
+    <div class="section-header" data-reveal>
+      <span class="tag">Showcase</span>
+      <h2>Visual Gallery</h2>
+    </div>
+    <div class="gallery-grid">
+      <div class="gallery-item" data-reveal><img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800" alt=""></div>
+      <div class="gallery-item" data-reveal><img src="https://images.unsplash.com/photo-1522542550221-31fd19575a2d?auto=format&fit=crop&q=80&w=800" alt=""></div>
+      <div class="gallery-item" data-reveal><img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800" alt=""></div>
+      <div class="gallery-item" data-reveal><img src="https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&q=80&w=800" alt=""></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="reviews">
+  <div class="container">
+    <div class="section-header" data-reveal>
+      <span class="tag">Testimonials</span>
+      <h2>Client Reviews</h2>
+    </div>
+    <div class="reviews-slider">
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">"The level of detail and professionalism is unmatched. They transformed our digital presence in weeks."</p>
+        <div class="reviewer">
+          <div class="reviewer-img"></div>
+          <div>
+            <div class="author-name">Sarah Al-Farsi</div>
+            <div class="author-title">CEO, TechFlow</div>
+          </div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">"Finally a partner that understands the MENA market dynamics. Highly recommended for serious founders."</p>
+        <div class="reviewer">
+          <div class="reviewer-img"></div>
+          <div>
+            <div class="author-name">Omar Hassan</div>
+            <div class="author-title">Founder, Desert Retail</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="examples">
+  <div class="container">
+    <div class="portfolio-item" data-reveal>
+      <div class="portfolio-img">
+        <img src="https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&q=80&w=1000" alt="">
+      </div>
+      <div class="portfolio-text">
+        <span class="tag">Case Study</span>
+        <h2>Digital Transformation</h2>
+        <p class="sub" style="margin: 0;">How we helped a traditional retail brand move 100% online and increase revenue by 300%.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="pricing">
+  <div class="container">
+    <div class="section-header" data-reveal>
+      <span class="tag">Investment</span>
+      <h2>Simple Pricing</h2>
+    </div>
+    <div class="pricing-grid">
+      <div class="price-card" data-reveal>
+        <div class="price-name">Starter</div>
+        <div class="price-val">$999</div>
+        <p>Perfect for new ventures</p>
+        <button class="btn-cta" style="width:100%; margin-top:30px;">Get Started</button>
+      </div>
+      <div class="price-card popular" data-reveal>
+        <div class="price-name">Professional</div>
+        <div class="price-val">$2,499</div>
+        <p>For growing businesses</p>
+        <button class="btn-cta" style="width:100%; margin-top:30px;">Get Started</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="contact">
+  <div class="container">
+    <div class="contact-wrap">
+      <div data-reveal>
+        <h2>Let's Build <br>Together</h2>
+        <p class="sub" style="margin: 0;">Ready to start your next project? Get in touch with our team today.</p>
+      </div>
+      <form class="contact-form" data-reveal>
+        <input type="text" placeholder="Your Name">
+        <input type="email" placeholder="Your Email">
+        <textarea placeholder="Project Details" rows="5"></textarea>
+        <button class="btn-cta" style="width:100%">Send Message</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="logo" style="margin-bottom: 20px;">{{BRAND_NAME}}</div>
+        <p style="color:var(--muted)">Building the future of digital commerce in the MENA region.</p>
+      </div>
+      <div>
+        <h4 style="margin-bottom: 20px;">Links</h4>
+        <a href="#" style="display:block; color:var(--muted); margin-bottom:10px;">Services</a>
+        <a href="#" style="display:block; color:var(--muted); margin-bottom:10px;">Portfolio</a>
+      </div>
+    </div>
+    <div style="text-align:center; color:var(--muted); font-size:14px; border-top:1px solid var(--border); padding-top:40px;">
+      &copy; 2026 {{BRAND_NAME}}. All rights reserved.
+    </div>
+  </div>
+</footer>
+
+<script>
+// Navbar Scroll Effect
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('navbar');
+  if (window.scrollY > 50) nav.classList.add('scrolled');
+  else nav.classList.remove('scrolled');
+});
+
+// Hero Carousel
+let currentSlide = 0;
+const slides = document.querySelectorAll('.slide');
+function nextSlide() {
+  slides[currentSlide].classList.remove('active');
+  currentSlide = (currentSlide + 1) % slides.length;
+  slides[currentSlide].classList.add('active');
+}
+setInterval(nextSlide, 5000);
+
+// Reveal on Scroll
+const observerOptions = { threshold: 0.1 };
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) entry.target.classList.add('active');
+  });
+}, observerOptions);
+document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

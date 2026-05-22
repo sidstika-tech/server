@@ -140,8 +140,7 @@ function getCurrency(country) {
 ══════════════════════════════════════════════════════════════════ */
 
 async function generateBrandKit(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Create a complete Brand Identity Kit for a MENA business.
 
 Business: ${inputs.businessName}
@@ -164,8 +163,7 @@ Every recommendation must be immediately usable without a designer.`, MASTER_IDE
 }
 
 async function generateBusinessPlan(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Write a complete Business Plan for a MENA entrepreneur.
 
 Business: ${inputs.businessName}
@@ -192,8 +190,7 @@ Be specific to ${inputs.location}. Use local currency. Reference real platforms,
 }
 
 async function generateCompetitorMatrix(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Build a Competitor Analysis for a MENA business.
 
 Business: ${inputs.businessName}
@@ -214,8 +211,7 @@ Use real competitors. Name them. Be honest about who's strong and who's weak.`, 
 }
 
 async function generatePricingCalculator(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Design a Pricing Strategy for a MENA business.
 
 Business: ${inputs.businessName}
@@ -239,8 +235,7 @@ Use local currency. Be specific to the market.`, MASTER_IDENTITY, { language: in
 }
 
 async function generateLaunchRoadmap(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Create a 30-Day Launch Roadmap for a MENA entrepreneur.
 
 Business: ${inputs.businessName}
@@ -262,8 +257,7 @@ End with: Month 2 priorities.`, MASTER_IDENTITY, { language: inputs.language });
 }
 
 async function generateContract(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Draft a professional Business Contract for a MENA business.
 
 Business: ${inputs.businessName}
@@ -276,8 +270,7 @@ Note: This is a template. Recommend they have a local lawyer review before use. 
 }
 
 async function generateBudgetEstimator(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Build a 6-Month Financial Model for a MENA business.
 
 Business: ${inputs.businessType}
@@ -302,8 +295,7 @@ Be brutally honest. Use real costs for ${inputs.location}. Don't inflate revenue
 }
 
 async function generatePitchDeck(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Write a complete Pitch Deck script for a MENA entrepreneur.
 
 Business: ${inputs.businessName}
@@ -318,8 +310,7 @@ Tailored for MENA investors who care about: execution speed, market size, founde
 }
 
 async function generateAdCopy(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Write high-converting Ad Copy for a MENA business.
 
 Business: ${inputs.businessName}
@@ -340,8 +331,7 @@ MENA ad behavior: WhatsApp is the conversion channel. Instagram is discovery. Go
 
 /* SEO — GPT-4o-mini per spec */
 async function generateSeoKeywords(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Create a complete SEO Strategy for a MENA business.
 
 Business: ${inputs.businessName}
@@ -367,8 +357,7 @@ Deliver:
 }
 
 async function generateColdEmail(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Write Cold Outreach sequences for a MENA entrepreneur.
 
 Business: ${inputs.businessName}
@@ -386,8 +375,7 @@ MENA outreach rules: warmth before business, WhatsApp > email for SMBs, LinkedIn
 }
 
 async function generateSalesScript(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Write Sales Scripts for a MENA business.
 
 Business: ${inputs.businessName}
@@ -406,8 +394,7 @@ Deliver:
 }
 
 async function generateMarketResearch(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Conduct Market Intelligence Research for a MENA business.
 
 Niche: ${inputs.niche || inputs.product}
@@ -429,8 +416,7 @@ Deliver:
 }
 
 async function generateMarketingStrategy(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Build a complete Marketing Strategy for a MENA business.
 
 Business: ${inputs.businessName}
@@ -455,8 +441,7 @@ Deliver:
 }
 
 async function generateMarketStudy(inputs) {
-  const _ai = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai(`${psychProfileBlock(inputs)}
+  return openaiChat(`${psychProfileBlock(inputs)}
 Conduct a focused Market Study.
 
 Topic: ${inputs.topic || inputs.niche}
@@ -491,8 +476,7 @@ Hidden Strength: ${dnaContext.realStrength || 'Not set'}
 Avoid at all cost: ${dnaContext.avoidAtAllCost || 'Not set'}
 ═══════════════════════════════════════` : '';
 
-  const _ai2 = inputs.useHaiku ? openrouterChat : openaiChat;
-  return _ai2(`${psychCtx}
+  return openaiChat(`${psychCtx}
 Generate an interactive learning session for the Double Eight AI Academy.
 
 Session: ${sessionData.title}
@@ -527,22 +511,27 @@ Write in a voice that feels like a brilliant, battle-tested mentor who knows the
    Three-pass approach: validate → generate → repair if needed
 ══════════════════════════════════════════════════════════════════ */
 const TEMPLATE_MAP = {
-  'Business / Company':   'business.html',
-  'Portfolio / Personal': 'portfolio.html',
-  'Restaurant / Cafe':    'restaurant.html',
-  'E-Commerce / Store':   'ecommerce.html',
-  'Startup / SaaS':       'business.html',
-  'Gym / Fitness':        'business.html',
-  'Real Estate':          'business.html',
-  'Medical / Clinic':     'business.html',
+  'Business / Company':   'premium.html',
+  'E-commerce / Shop':    'premium.html',
+  'Portfolio / Personal': 'premium.html',
+  'Service / Agency':     'premium.html',
+  'Restaurant / Cafe':    'premium.html',
+  'Real Estate':          'premium.html',
+  'Education / Course':   'premium.html',
+  'Medical / Clinic':     'premium.html',
+  'premium':              'premium.html'
 };
 
 function loadTemplate(websiteType) {
-  const filename = TEMPLATE_MAP[websiteType] || 'business.html';
+  const filename = TEMPLATE_MAP[websiteType] || 'premium.html';
   const filepath = path.join(__dirname, '..', 'website-templates', filename);
   if (!fs.existsSync(filepath)) {
-    const fallback = path.join(__dirname, '..', 'website-templates', 'business.html');
-    if (!fs.existsSync(fallback)) throw new Error('No website templates found');
+    const fallback = path.join(__dirname, '..', 'website-templates', 'premium.html');
+    if (!fs.existsSync(fallback)) {
+      const superFallback = path.join(__dirname, '..', 'website-templates', 'business.html');
+      if (!fs.existsSync(superFallback)) throw new Error('No website templates found');
+      return fs.readFileSync(superFallback, 'utf8');
+    }
     return fs.readFileSync(fallback, 'utf8');
   }
   return fs.readFileSync(filepath, 'utf8');
@@ -576,125 +565,102 @@ function applyFallbackEdits(template, inputs) {
 function extractHTML(raw) {
   if (!raw) throw new Error('Empty response');
   let html = String(raw).trim();
-  // Strip markdown fences
-  html = html.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-  // Extract the HTML document
-  const match = html.match(/<!DOCTYPE\s+html[\s\S]*<\/html>/i);
-  if (match) return match[0];
-  // If no doctype but has <html>, try that
-  const htmlMatch = html.match(/<html[\s\S]*<\/html>/i);
-  if (htmlMatch) return `<!DOCTYPE html>\n${htmlMatch[0]}`;
+  
+  // Remove any markdown code fences if present
+  html = html.replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  
+  // Try to find the start of the HTML document
+  const doctypeIndex = html.toLowerCase().indexOf('<!doctype html>');
+  const htmlStartIndex = html.toLowerCase().indexOf('<html');
+  
+  let startIndex = -1;
+  if (doctypeIndex !== -1) startIndex = doctypeIndex;
+  else if (htmlStartIndex !== -1) startIndex = htmlStartIndex;
+  
+  if (startIndex !== -1) {
+    const lastHtmlEndIndex = html.toLowerCase().lastIndexOf('</html>');
+    if (lastHtmlEndIndex !== -1) {
+      let result = html.substring(startIndex, lastHtmlEndIndex + 7);
+      if (startIndex === htmlStartIndex && doctypeIndex === -1) {
+        result = '<!DOCTYPE html>\n' + result;
+      }
+      return result;
+    }
+  }
+  
+  // If we couldn't find proper tags but it looks like HTML, return it as is
+  if (html.includes('<body') || html.includes('<div')) {
+    return html;
+  }
+  
   throw new Error('No valid HTML document found in response');
 }
 
 async function generateWebsiteCreation(inputs) {
-  const template = loadTemplate(inputs.content || 'Business / Company');
+  // Use the premium template for high-end design
+  const template = loadTemplate('premium');
   const isAr = inputs.language === 'ar';
-  const name = inputs.businessName || 'My Business';
+  const schemeInfo = COLOR_SCHEMES[inputs.colors] || COLOR_SCHEMES['Dark & Gold (Luxury)'];
 
-  // STEP 1: Deterministic replace — instant, zero AI needed, always works
-  let html = applyFallbackEdits(template, inputs);
+  const websitePrompt = `You are a world-class web designer and developer. Your goal is to create a HIGH-END, premium 8-section website.
 
-  // STEP 2: Ask GPT to generate ONLY the text content (headlines, taglines, sections)
-  // Then we inject those texts into the already-colored template. This way GPT
-  // never has to output 25KB of HTML — just ~500 words of business copy.
-  try {
-    const copyPrompt = `Generate website copy for this business. Return ONLY valid JSON, no markdown.
+STRICT DESIGN RULES:
+1. HIGH DESIGN: Use modern layouts, overlapping elements, high-quality spacing, and professional typography.
+2. 8 SECTIONS: The website MUST include:
+   - Hero with Carousel (Animated transitions)
+   - Services Grid (High-style cards with icons and hover effects)
+   - Performance Dashboard (Visual stats, charts, and data grids)
+   - Visual Gallery (Modern masonry or grid layout)
+   - Client Reviews (Premium testimonial slider)
+   - Case Studies / Examples (Detailed project showcases)
+   - Pricing / Investment Plans (Clear, professional comparison)
+   - Contact & Footer (Modern form and structured footer)
+3. ANIMATIONS: Use the [data-reveal] attribute and CSS transitions for smooth entrance effects.
+4. INTERACTIVE: Ensure the carousel, dashboard charts, and sliders are fully functional with the provided JavaScript.
+5. ASSETS: Use high-quality Unsplash images relevant to the business type.
 
-Business: ${name}
+CUSTOMIZE THIS PREMIUM TEMPLATE:
+Business Name: ${inputs.businessName || 'My Business'}
 Type: ${inputs.content || 'Business'}
-Sections: ${inputs.sections || 'Hero, About, Features, Pricing, Testimonials, Contact'}
-Extra details: ${inputs.extraDetails || 'None'}
-${isAr ? 'LANGUAGE: Write ALL text in Arabic.' : 'LANGUAGE: English'}
+Language: ${isAr ? 'Arabic — set dir="rtl" on html tag, translate ALL text to Arabic' : 'English'}
+Color Scheme: ${inputs.colors || 'Dark & Gold'}
+  - Primary: ${schemeInfo.primary}
+  - Accent: ${schemeInfo.accent}
+  - Background: ${schemeInfo.bg}
+  - Text: ${schemeInfo.text}
 
-Return JSON:
-{
-  "heroTag": "short badge text (5-8 words, e.g. 'Trusted by 1,000+ businesses')",
-  "heroHeadline": "main headline (8-12 words, powerful, specific to this business)",
-  "heroAccentWord": "1-2 words from the headline to emphasize (the bold/colored part)",
-  "heroSubtext": "hero paragraph (2 sentences describing what the business does)",
-  "ctaPrimary": "primary button text (2-4 words)",
-  "ctaSecondary": "secondary button text (2-3 words)",
-  "features": [
-    {"icon": "emoji", "title": "feature title", "desc": "feature description (2 sentences)"},
-    {"icon": "emoji", "title": "feature title", "desc": "feature description"},
-    {"icon": "emoji", "title": "feature title", "desc": "feature description"}
-  ],
-  "aboutTitle": "about section headline",
-  "aboutP1": "about paragraph 1 (2-3 sentences — brand story)",
-  "aboutP2": "about paragraph 2 (2-3 sentences — mission)",
-  "stats": [
-    {"num": "1,000+", "label": "stat label"},
-    {"num": "$50M+", "label": "stat label"},
-    {"num": "12+", "label": "stat label"},
-    {"num": "98%", "label": "stat label"}
-  ],
-  "testimonials": [
-    {"quote": "testimonial text (2 sentences)", "name": "First Last", "title": "Role, Company"},
-    {"quote": "testimonial text", "name": "First Last", "title": "Role, Company"},
-    {"quote": "testimonial text", "name": "First Last", "title": "Role, Company"}
-  ],
-  "contactHeadline": "contact section title",
-  "contactSubtext": "contact section subtitle (1 sentence)",
-  "footerTagline": "footer brand description (1 sentence)"
-}`;
+WHAT TO CHANGE:
+- Replace {{BRAND_NAME}} with: ${inputs.businessName || 'My Business'}
+- Replace {{PRIMARY_COLOR}}, {{ACCENT_COLOR}}, {{BG_COLOR}}, {{TEXT_COLOR}} with the hex codes provided.
+- Rewrite ALL headlines and body text to be professional, persuasive, and specific to a ${inputs.content} business.
+- Ensure all 8 sections are fully populated with relevant content.
+${isAr ? '- Set html dir="rtl", translate all text to Arabic, ensure RTL layout is perfect.' : ''}
 
-    const raw = await deepseekChat(copyPrompt,
-      'You are a professional copywriter. Return ONLY valid JSON. Write compelling, specific copy for real businesses.',
-      { temperature: 0.7, json: true, maxTokens: 2048, language: inputs.language }
+THE TEMPLATE:
+${template}
+
+RETURN ONLY THE COMPLETE EDITED HTML FILE. NO MARKDOWN. NO EXPLANATIONS.`;
+
+  try {
+    const raw = await openaiChat(
+      websitePrompt,
+      'You are an expert web developer. Output ONLY the complete HTML file, nothing else. No explanations, no markdown, no code fences. Just the HTML.',
+      { temperature: 0.3, maxTokens: 8192 }
     );
 
-    let copy;
-    try {
-      const clean = String(raw).trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-      copy = JSON.parse(clean);
-    } catch { copy = null; }
+    const html = extractHTML(raw);
 
-    if (copy) {
-      // Inject the AI-generated copy into the template
-      // Hero section
-      if (copy.heroTag) html = html.replace(/✦[^<]*<\/span>/, `✦ ${copy.heroTag}</span>`);
-      if (copy.heroHeadline && copy.heroAccentWord) {
-        const headlineHtml = copy.heroHeadline.replace(copy.heroAccentWord, `<span class="accent">${copy.heroAccentWord}</span>`);
-        html = html.replace(/<h1>[^]*?<\/h1>/, `<h1>${headlineHtml}</h1>`);
-      }
-      if (copy.heroSubtext) html = html.replace(/<p>We help ambitious[^]*?<\/p>/, `<p>${copy.heroSubtext}</p>`);
-      if (copy.ctaPrimary) html = html.replace(/Start Today →/, copy.ctaPrimary);
-      if (copy.ctaSecondary) html = html.replace(/Learn More/, copy.ctaSecondary);
-
-      // Features
-      if (copy.features?.length >= 3) {
-        copy.features.forEach((f, i) => {
-          const featureBlocks = html.match(/<div class="feature fade-up">[\s\S]*?<\/div>\s*<\/div>/g);
-          if (featureBlocks?.[i]) {
-            let block = featureBlocks[i];
-            block = block.replace(/<div class="feature-icon">[^<]*<\/div>/, `<div class="feature-icon">${f.icon}</div>`);
-            block = block.replace(/<h3>[^<]*<\/h3>/, `<h3>${f.title}</h3>`);
-            block = block.replace(/<p>[^<]*<\/p>/, `<p>${f.desc}</p>`);
-            html = html.replace(featureBlocks[i], block);
-          }
-        });
-      }
-
-      // About
-      if (copy.aboutTitle) html = html.replace(/Built for businesses that refuse to settle/, copy.aboutTitle);
-
-      // Footer
-      if (copy.footerTagline) html = html.replace(/Premium strategy and execution[^<]*/, copy.footerTagline);
-
-      // RTL for Arabic
-      if (isAr) {
-        html = html.replace(/<html lang="en">/, '<html lang="ar" dir="rtl">');
-        // Swap some text-align if needed
-        html = html.replace(/text-align:\s*left/g, 'text-align:right');
-      }
+    // Validate minimum size (template is ~25KB, edited should be at least 50% of that)
+    if (html.length < template.length * 0.4) {
+      console.warn('Website generation: HTML too short, applying fallback edits');
+      return applyFallbackEdits(template, inputs);
     }
-  } catch (err) {
-    console.warn('Website AI copy generation failed, using template defaults:', err.message);
-    // Fallback is already applied — the template with replaced brand/colors works fine
-  }
 
-  return html;
+    return html;
+  } catch (err) {
+    console.error('Website generation failed, using fallback:', err.message);
+    return applyFallbackEdits(template, inputs);
+  }
 }
 
 // Legacy alias
