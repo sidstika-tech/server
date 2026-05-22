@@ -94,16 +94,18 @@ async function streamChat(messages, type, onChunk, language) {
         lastMsg.imageData,
         sysMsg
       );
-      // Stream the response character by character for SSE
-      const chunks = visionResponse.match(/.{1,20}/g) || [visionResponse];
-      for (const chunk of chunks) {
-        if (onChunk) onChunk(chunk);
-        await new Promise(r => setTimeout(r, 15));
+      // FIX #3: Stream immediately in larger chunks — removed artificial 15ms delay
+      // that was causing 40+ second response times for image uploads.
+      const chunkSize = 100;
+      for (let i = 0; i < visionResponse.length; i += chunkSize) {
+        if (onChunk) onChunk(visionResponse.slice(i, i + chunkSize));
       }
       return visionResponse;
     } catch (err) {
       console.error('Gemini Vision failed:', err.message);
-      const fallback = 'I received your image but could not analyze it right now. Please describe what you see and I will help.';
+      const fallback = language === 'ar'
+        ? 'تلقّيت صورتك ولكن لم أتمكن من تحليلها الآن. يرجى وصف ما تراه وسأساعدك.'
+        : 'I received your image but could not analyze it right now. Please describe what you see and I will help.';
       if (onChunk) onChunk(fallback);
       return fallback;
     }

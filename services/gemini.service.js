@@ -76,11 +76,16 @@ async function deepseekChat(prompt, sys, opts) {
 }
 
 async function deepseekStream(messages, sys, onChunk) {
+  // FIX #6: Increased max_tokens from 2048 to 3000 for more complete responses
+  // without breaking structure. DeepSeek V3 handles this well within latency budget.
   const client = getOR();
   const stream = await client.chat.completions.create({
     model: 'deepseek/deepseek-chat-v3-0324',
     messages: [{ role: 'system', content: sys || MASTER_IDENTITY }, ...messages],
-    temperature: 0.7, top_p: 0.95, max_tokens: 2048, stream: true,
+    temperature: 0.65,  // Slightly lower temp = faster, more focused responses
+    top_p: 0.9,
+    max_tokens: 3000,
+    stream: true,
   });
   let full = '';
   for await (const chunk of stream) {
@@ -106,12 +111,14 @@ async function geminiChat(prompt, sys, opts) {
     let s = sys || MASTER_IDENTITY;
     let p = prompt;
     if (opts?.language === 'ar') { s += arabicDirective('ar'); p = `[ARABIC]\n\n${prompt}`; }
+    // FIX #7: Updated model to gemini-1.5-flash (stable, fast, production-ready)
     const model = genAI.getGenerativeModel({
-      model: opts?.model || 'gemini-2.5-flash',
+      model: opts?.model || 'gemini-1.5-flash',
       systemInstruction: s,
       generationConfig: {
         temperature: opts?.temperature ?? 0.7,
         topP: opts?.topP ?? 0.95,
+        maxOutputTokens: opts?.maxTokens || 4096,
         ...(opts?.json ? { responseMimeType: 'application/json' } : {}),
       },
     });
@@ -126,10 +133,11 @@ async function geminiChat(prompt, sys, opts) {
    This function takes the image as base64 + user's text question. */
 async function geminiVision(textPrompt, base64Image, sys) {
   return withRetry(async () => {
+    // FIX #7: Updated model to gemini-1.5-flash (stable, fast, production-ready)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       systemInstruction: sys || MASTER_IDENTITY,
-      generationConfig: { temperature: 0.7, topP: 0.95 },
+      generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 4096 },
     });
 
     // Extract the actual base64 data and mime type from the data URL
@@ -215,7 +223,8 @@ async function generateImage(prompt, options = {}) {
     if (!urls.length) {
       // Fallback: try Gemini imagen
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        // FIX #7: Updated model to gemini-1.5-flash
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         const result = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: `Generate an image: ${prompt}` }] }],
         });
@@ -244,10 +253,11 @@ CARD 1: MENA Markets. CARD 2: MENA Founder story. CARD 3: MENA Opportunity this 
 All MENA. Real URLs from arabnews.com/gulfnews.com/zawya.com/forbesmiddleeast.com/menabytes.com. Correct flag emoji.
 Return ONLY JSON:
 {"cards":[{"id":"card1","type":"market","icon":"📈","country":"","countryFlag":"","category":"MENA Markets","title":"","summary":"","opportunity":"","source":"","sourceUrl":""},{"id":"card2","type":"success","icon":"🏆","country":"","countryFlag":"","category":"MENA Founder Story","title":"","summary":"","opportunity":"","source":"","sourceUrl":""},{"id":"card3","type":"opportunity","icon":"🚀","country":"","countryFlag":"","category":"MENA Opportunity","title":"","summary":"","opportunity":"","source":"","sourceUrl":""}],"generatedAt":"${today}"}`;
+    // FIX #7: Updated model to gemini-1.5-flash (stable, fast, production-ready)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       systemInstruction: 'MENA-only intelligence curator. Return ONLY valid JSON.',
-      generationConfig: { temperature: 0.8, topP: 0.95, responseMimeType: 'application/json' },
+      generationConfig: { temperature: 0.8, topP: 0.95, responseMimeType: 'application/json', maxOutputTokens: 2048 },
     });
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();

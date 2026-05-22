@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
+try { const compression = require('compression'); module.exports._compression = compression; } catch(e) {}
 require('dotenv').config();
 
 const app = express();
@@ -59,15 +60,29 @@ const corsOptions = {
 app.use(cors(corsOptions));
 // Explicit preflight handler — guarantees OPTIONS responses always get CORS headers
 app.options('*', cors(corsOptions));
+// FIX #6: Add compression for faster API responses (gzip/deflate)
+try {
+  const compression = require('compression');
+  // Skip compression for SSE streams (chat) to avoid buffering
+  app.use(compression({
+    filter: (req, res) => {
+      if (req.path.includes('/chat/') && req.method === 'POST') return false;
+      return compression.filter(req, res);
+    },
+    level: 6, // balanced speed/compression
+  }));
+} catch(e) { /* compression not installed, skip */ }
 app.use(express.json({ limit:'10mb' }));
 app.use(morgan('dev'));
+// FIX #6: Increased AI rate limits to allow faster consecutive requests
+const aiLimiterFast = rateLimit({ windowMs:60*1000, max:30, message:{error:'AI rate limit exceeded. Please wait a moment.'} });
 app.use('/api/', limiter);
-app.use('/api/chat', aiLimiter);
-app.use('/api/generator', aiLimiter);
-app.use('/api/market-research', aiLimiter);
-app.use('/api/marketing', aiLimiter);
-app.use('/api/tools', aiLimiter);
-app.use('/api/academy', aiLimiter);
+app.use('/api/chat', aiLimiterFast);
+app.use('/api/generator', aiLimiterFast);
+app.use('/api/market-research', aiLimiterFast);
+app.use('/api/marketing', aiLimiterFast);
+app.use('/api/tools', aiLimiterFast);
+app.use('/api/academy', aiLimiterFast);
 
 let isConnected = false;
 const connectDB = async () => {
