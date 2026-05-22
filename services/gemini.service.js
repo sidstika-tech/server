@@ -107,7 +107,7 @@ async function geminiChat(prompt, sys, opts) {
     let p = prompt;
     if (opts?.language === 'ar') { s += arabicDirective('ar'); p = `[ARABIC]\n\n${prompt}`; }
     const model = genAI.getGenerativeModel({
-      model: opts?.model || 'gemini-2.5-flash',
+      model: opts?.model || 'gemini-3.5-flash',
       systemInstruction: s,
       generationConfig: {
         temperature: opts?.temperature ?? 0.7,
@@ -127,7 +127,7 @@ async function geminiChat(prompt, sys, opts) {
 async function geminiVision(textPrompt, base64Image, sys) {
   return withRetry(async () => {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       systemInstruction: sys || MASTER_IDENTITY,
       generationConfig: { temperature: 0.7, topP: 0.95 },
     });
@@ -222,7 +222,7 @@ if (message.images) {
     if (!urls.length) {
       // Fallback: try Gemini imagen
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const result = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: `Generate an image: ${prompt}` }] }],
         });
