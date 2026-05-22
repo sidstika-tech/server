@@ -47,7 +47,11 @@ exports.generate = async (req, res) => {
     const title = `${label} — ${sanitized.businessName || sanitized.niche || sanitized.industry || 'My Business'}`;
     
     // For website creation, the content IS the HTML. For others, we generate a report wrapper.
-    const htmlContent = toolType === 'website_creation' ? content : exportService.generateHTML(title, content);
+   let htmlContent = content;
+
+if (toolType !== 'website_creation') {
+  htmlContent = exportService.generateHTML(title, content);
+}
 
     const report = await Report.create({
       user: req.user._id, title, type: toolType, content, htmlContent, inputs: sanitized,
