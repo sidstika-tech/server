@@ -19,7 +19,7 @@ const path = require('path');
    Launch Package generators    → GPT-4o-mini          (structured docs)
    Website Generator            → GPT-4o-mini          (reliable HTML)
    Academy Founder Path/Journey → GPT-4o-mini          (educational)
-   Academy Daily Insight/Trend  → Gemini Flash 3.5     (fast + free)
+   Academy Daily Insight/Trend  → Gemini Flash 2.5     (fast + free)
    SEO & Keywords Tool          → GPT-4o-mini          (structured)
    All other AI Tools           → GPT-4o-mini          (structured JSON)
    Image Generation             → xAI Grok Aurora      (text→image)
@@ -625,15 +625,14 @@ function extractHTML(raw) {
 async function generateWebsiteCreation(inputs) {
   const template = loadTemplate(inputs.content || 'Business / Company');
   const isAr = inputs.language === 'ar';
+  const name = (inputs.businessName || 'My Business').trim();
 
+  // STEP 0: Deterministic base replace (instant — colors, brand name, fonts)
   let html = applyFallbackEdits(template, inputs);
-
   if (isAr) {
-    html = html.replace(/<html([^>]*)lang="en"/, '<html$1lang="ar" dir="rtl">');
+    html = html.replace(/<html([^>]*)lang="en"/, '<html$1lang="ar" dir="rtl"');
+    html = html.replace(/<html([^>]*)>(?![^]*dir=)/, '<html$1 dir="rtl">');
   }
-
-  return html; // 🔥 REQUIRED
-}
 
   /* ═══════════════════════════════════════════════════════════
      STEP 1 — MODEL 1 (DeepSeek): Read user input → write creative brief

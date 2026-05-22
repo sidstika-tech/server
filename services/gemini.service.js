@@ -107,7 +107,7 @@ async function geminiChat(prompt, sys, opts) {
     let p = prompt;
     if (opts?.language === 'ar') { s += arabicDirective('ar'); p = `[ARABIC]\n\n${prompt}`; }
     const model = genAI.getGenerativeModel({
-      model: opts?.model || 'gemini-3.5-flash',
+      model: opts?.model || 'gemini-2.5-flash',
       systemInstruction: s,
       generationConfig: {
         temperature: opts?.temperature ?? 0.7,
@@ -127,7 +127,7 @@ async function geminiChat(prompt, sys, opts) {
 async function geminiVision(textPrompt, base64Image, sys) {
   return withRetry(async () => {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-2.5-flash',
       systemInstruction: sys || MASTER_IDENTITY,
       generationConfig: { temperature: 0.7, topP: 0.95 },
     });
@@ -178,23 +178,16 @@ async function generateImage(prompt, options = {}) {
     }
 
     const response = await client.chat.completions.create({
-      model: "x-ai/grok-imagine-image-quality",
+      model: 'x-ai/grok-2-image',
       messages: [
-    {
-      role: "user",
-      content: "Generate a beautiful sunset over mountains"
-    }
-  ],
-  modalities: ["image"]
-});
+        { role: 'user', content }
+      ],
+      max_tokens: 1024,
+    });
 
-const message = result.choices[0].message;
-if (message.images) {
-  message.images.forEach((image, index) => {
-    const imageUrl = image.image_url.url;
-    console.log(`Generated image ${index + 1}: ${imageUrl.substring(0, 50)}...`);
-  });
-};
+    // Grok returns images in the response message
+    const message = response.choices?.[0]?.message;
+    const urls = [];
 
     // Check for image URLs in content array
     if (message?.content && Array.isArray(message.content)) {
@@ -222,7 +215,7 @@ if (message.images) {
     if (!urls.length) {
       // Fallback: try Gemini imagen
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         const result = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: `Generate an image: ${prompt}` }] }],
         });
