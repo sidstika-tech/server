@@ -2,69 +2,31 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const OpenAI = require('openai');
 
 /* ══════════════════════════════════════════════════════════════════
-   AI CLIENTS
+   TWO CLIENTS:
+   1. OPENROUTER  → DeepSeek, Claude Haiku, GPT-4o-mini, Grok image
+   2. GEMINI      → Academy daily + Founder Path + VISION (image reading in chat)
 
-   1. Gemini Flash 2.5     → Academy Daily News + Academy Sessions
-      Fast, good for curated news and educational content
-      Env: GEMINI_API_KEY
-
-   2. OpenRouter → Business DNA (anthropic/claude-3-haiku)
-      Deep psychological reading, structured JSON
-      Env: OPENROUTER_API_KEY
-
-   3. OpenRouter → Launch Package + Website Generator
-      + SEO/Keywords Tool + Founder Path Sessions (openai/gpt-4o-mini)
-      Reliable JSON, structured documents
-      Env: OPENROUTER_API_KEY
-
-   4. OpenRouter → AI Chat Advisor (deepseek/deepseek-chat-v3-0324)
-      Strong reasoning, honest, direct — perfect for advisor role
-      Env: OPENROUTER_API_KEY
-
-   5. OpenRouter → Image Generation (x-ai/grok-imagine-image-quality)
-      Env: OPENROUTER_API_KEY
+   ENV: OPENROUTER_API_KEY, GEMINI_API_KEY
 ══════════════════════════════════════════════════════════════════ */
 
-// ── GEMINI ──
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ── OPENROUTER (Claude 3.5 Haiku for DNA) ──
-let _openrouterClient = null;
-function getOpenRouter() {
-  if (_openrouterClient) return _openrouterClient;
+let _or = null;
+function getOR() {
+  if (_or) return _or;
   if (!process.env.OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY is not set');
-  _openrouterClient = new OpenAI({
+  _or = new OpenAI({
     apiKey: process.env.OPENROUTER_API_KEY,
     baseURL: 'https://openrouter.ai/api/v1',
-    defaultHeaders: {
-      'HTTP-Referer': 'https://doubleeight.online',
-      'X-Title': 'Double Eight AI',
-    },
+    defaultHeaders: { 'HTTP-Referer': 'https://doubleeight.online', 'X-Title': 'Double Eight AI' },
   });
-  return _openrouterClient;
+  return _or;
 }
 
-// ── OpenRouter handles: DeepSeek (Chat), Claude Haiku (DNA), GPT-4o-mini (Tools), Grok (Images) ──
-
-/* ── MASTER IDENTITY ── */
 const MASTER_IDENTITY = `You are the AI core of Double Eight AI — the first business intelligence platform built for Arab and MENA entrepreneurs.
+Your users are first-generation entrepreneurs with limited budgets and unlimited ambition.
+Principles: Specificity, Respect, Cultural Awareness, Always Actionable, Honest.`;
 
-Your users are:
-- First-generation entrepreneurs with no formal business background
-- Building something to provide for family and prove their potential
-- Limited budgets, unlimited ambition
-- Need advice for their specific country, culture, and market — not generic Western templates
-
-Your principles:
-1. SPECIFICITY: Generic feels like Google. Specific feels like a mentor.
-2. RESPECT: They are smart. They lack access, not intelligence.
-3. CULTURAL AWARENESS: Family business dynamics, reputation (sum'a), halal income, community trust.
-4. ALWAYS ACTIONABLE: Every insight ends with what to do next.
-5. HONEST BUT WARM: Truth framed as advice from a trusted mentor — never a critic.`;
-
-/* ──────────────────────────────────────────────────────────────────
-   RETRY HELPER
-──────────────────────────────────────────────────────────────────── */
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function withRetry(fn, { tries = 3, baseDelay = 700, label = 'ai' } = {}) {
@@ -76,271 +38,215 @@ async function withRetry(fn, { tries = 3, baseDelay = 700, label = 'ai' } = {}) 
       if (/429|quota|rate.?limit|exhausted/i.test(err?.message || '')) throw err;
       if (i < tries - 1) {
         const wait = baseDelay * Math.pow(2, i);
-        console.warn(`[${label}] attempt ${i + 1} failed (${(err.message || '').slice(0, 80)}). Retrying in ${wait}ms`);
+        console.warn(`[${label}] attempt ${i + 1} failed (${(err.message || '').slice(0, 100)}). Retrying in ${wait}ms`);
         await delay(wait);
-        continue;
-      }
-      throw err;
+      } else throw err;
     }
   }
   throw lastErr;
 }
 
-/* ── Arabic injection helper ── */
 function arabicDirective(lang) {
   if (lang !== 'ar') return '';
-  return `\n\nCRITICAL LANGUAGE REQUIREMENT: Write your ENTIRE response in Modern Standard Arabic (الفصحى). Keep proper nouns in their original language. Do NOT respond in English under any circumstances.`;
+  return `\n\nCRITICAL: Write ENTIRE response in Modern Standard Arabic (الفصحى). Keep proper nouns in original. Never respond in English.`;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   1. DEEPSEEK CHAT — AI Chat Advisor (Chat V3)
-   Honest, direct, no flattery, no long explanations
-   Used by: chat.controller (streamChat + chat)
-══════════════════════════════════════════════════════════════════ */
-async function deepseekChat(prompt, systemInstruction, options) {
+function orChat(model, prompt, sys, opts) {
   return withRetry(async () => {
-    const client = getOpenRouter();
-    let sysMsg = systemInstruction || MASTER_IDENTITY;
-    if (options?.language === 'ar') sysMsg += arabicDirective('ar');
-
-    const messages = [
-      { role: 'system', content: sysMsg },
-      { role: 'user', content: prompt },
-    ];
-
+    const client = getOR();
+    let sysMsg = sys || MASTER_IDENTITY;
+    if (opts?.language === 'ar') sysMsg += arabicDirective('ar');
+    if (opts?.json) sysMsg += '\n\nReturn ONLY valid JSON. No markdown, no backticks.';
     const params = {
-      model: 'deepseek/deepseek-chat-v3-0324',
-      messages,
-      temperature: options?.temperature ?? 0.7,
-      top_p: options?.topP ?? 0.95,
-      max_tokens: options?.maxTokens || 2048,
-      stream: false,
+      model,
+      messages: [{ role: 'system', content: sysMsg }, { role: 'user', content: prompt }],
+      temperature: opts?.temperature ?? 0.7,
+      top_p: opts?.topP ?? 0.95,
+      max_tokens: opts?.maxTokens || 4096,
     };
-
-    if (options?.json) {
-      params.response_format = { type: 'json_object' };
-    }
-
-    const completion = await client.chat.completions.create(params);
-    return completion.choices?.[0]?.message?.content || '';
-  }, { tries: 3, baseDelay: 700, label: 'deepseekChat' });
+    if (opts?.json && !model.startsWith('anthropic/')) params.response_format = { type: 'json_object' };
+    const c = await client.chat.completions.create(params);
+    return c.choices?.[0]?.message?.content || '';
+  }, { tries: 3, baseDelay: 700, label: model.split('/').pop() });
 }
 
-/* DeepSeek streaming — for the chat advisor SSE endpoint */
-async function deepseekStream(messages, systemInstruction, onChunk) {
-  const client = getOpenRouter();
-  
-  // Format messages for multimodal support if needed
-  const formattedMessages = messages.map(m => {
-    if (m.role === 'user' && m.imageData) {
-      return {
-        role: 'user',
-        content: [
-          { type: 'text', text: m.content },
-          { type: 'image_url', image_url: { url: m.imageData } }
-        ]
-      };
-    }
-    return { role: m.role, content: m.content };
-  });
+/* ═══ 1. DEEPSEEK — Chat Advisor ═══ */
+async function deepseekChat(prompt, sys, opts) {
+  return orChat('deepseek/deepseek-chat-v3-0324', prompt, sys, opts);
+}
 
-  const params = {
+async function deepseekStream(messages, sys, onChunk) {
+  const client = getOR();
+  const stream = await client.chat.completions.create({
     model: 'deepseek/deepseek-chat-v3-0324',
-    messages: [
-      { role: 'system', content: systemInstruction || MASTER_IDENTITY },
-      ...formattedMessages,
-    ],
-    temperature: 0.7,
-    top_p: 0.95,
-    max_tokens: 2048,
-    stream: true,
-  };
-
-  const stream = await client.chat.completions.create(params);
+    messages: [{ role: 'system', content: sys || MASTER_IDENTITY }, ...messages],
+    temperature: 0.7, top_p: 0.95, max_tokens: 2048, stream: true,
+  });
   let full = '';
   for await (const chunk of stream) {
-    const text = chunk.choices?.[0]?.delta?.content || '';
-    if (text) { full += text; if (onChunk) onChunk(text); }
+    const t = chunk.choices?.[0]?.delta?.content || '';
+    if (t) { full += t; if (onChunk) onChunk(t); }
   }
   return full;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   2. OPENROUTER CHAT (Claude 3.5 Haiku) — Business DNA only
-══════════════════════════════════════════════════════════════════ */
-async function openrouterChat(prompt, systemInstruction, options) {
-  return withRetry(async () => {
-    const client = getOpenRouter();
-    let sysMsg = systemInstruction || MASTER_IDENTITY;
-    if (options?.language === 'ar') sysMsg += arabicDirective('ar');
-    if (options?.json) sysMsg += '\n\nReturn ONLY valid JSON. No markdown, no backticks, no commentary.';
-
-    const messages = [
-      { role: 'system', content: sysMsg },
-      { role: 'user', content: prompt },
-    ];
-
-    const params = {
-      model: options?.model || 'anthropic/claude-3-haiku',
-      messages,
-      temperature: options?.temperature ?? 0.9,
-      top_p: options?.topP ?? 0.95,
-      max_tokens: options?.maxTokens || 6000,
-    };
-
-    const completion = await client.chat.completions.create(params);
-    return completion.choices?.[0]?.message?.content || '';
-  }, { tries: 3, baseDelay: 700, label: 'openrouterChat' });
+/* ═══ 2. CLAUDE 3 HAIKU — DNA + Launch Package ═══ */
+async function openrouterChat(prompt, sys, opts) {
+  return orChat(opts?.model || 'anthropic/claude-3-haiku', prompt, sys, { ...opts, maxTokens: opts?.maxTokens || 6000 });
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   3. OPENAI CHAT (GPT-4o-mini) — Launch Package + Tools + SEO + Website
-══════════════════════════════════════════════════════════════════ */
-async function openaiChat(prompt, systemInstruction, options) {
-  return withRetry(async () => {
-    const client = getOpenRouter();
-    let sysMsg = systemInstruction || MASTER_IDENTITY;
-    if (options?.language === 'ar') sysMsg += arabicDirective('ar');
-
-    const messages = [
-      { role: 'system', content: sysMsg },
-      { role: 'user', content: prompt },
-    ];
-
-    const params = {
-      model: 'openai/gpt-4o-mini',
-      messages,
-      temperature: options?.temperature ?? 0.7,
-      top_p: options?.topP ?? 0.95,
-      max_tokens: options?.maxTokens || 4096,
-    };
-
-    if (options?.json) {
-      params.response_format = { type: 'json_object' };
-    }
-
-    const completion = await client.chat.completions.create(params);
-    return completion.choices?.[0]?.message?.content || '';
-  }, { tries: 3, baseDelay: 700, label: 'openaiChat' });
+/* ═══ 3. GPT-4o-mini — AI Tools ═══ */
+async function openaiChat(prompt, sys, opts) {
+  return orChat(opts?.model || 'openai/gpt-4o-mini', prompt, sys, opts);
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   4. GEMINI CHAT — Academy Daily News + Academy Sessions
-══════════════════════════════════════════════════════════════════ */
-async function geminiChat(prompt, systemInstruction, options) {
+/* ═══ 4. GEMINI FLASH — Academy + VISION ═══ */
+async function geminiChat(prompt, sys, opts) {
   return withRetry(async () => {
-    let sys = systemInstruction || MASTER_IDENTITY;
+    let s = sys || MASTER_IDENTITY;
     let p = prompt;
-    if (options?.language === 'ar') {
-      sys += arabicDirective('ar');
-      p = `[OUTPUT LANGUAGE: ARABIC]\n\n${prompt}`;
-    }
+    if (opts?.language === 'ar') { s += arabicDirective('ar'); p = `[ARABIC]\n\n${prompt}`; }
     const model = genAI.getGenerativeModel({
-      model: options?.model || 'gemini-2.5-flash',
-      systemInstruction: sys,
+      model: opts?.model || 'gemini-2.5-flash',
+      systemInstruction: s,
       generationConfig: {
-        temperature: options?.temperature ?? 0.7,
-        topP: options?.topP ?? 0.95,
-        ...(options?.json ? { responseMimeType: 'application/json' } : {}),
+        temperature: opts?.temperature ?? 0.7,
+        topP: opts?.topP ?? 0.95,
+        ...(opts?.json ? { responseMimeType: 'application/json' } : {}),
       },
     });
     const result = await model.generateContent(p);
     return result.response.text();
-  }, { tries: 3, baseDelay: 700, label: 'geminiChat' });
+  }, { tries: 3, baseDelay: 700, label: 'gemini' });
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   5. IMAGE GENERATION — x-ai/grok-imagine-image-quality via OpenRouter
-   Uses /v1/chat/completions with modalities: ["image", "text"]
-   Response comes back as base64 data URLs in message.images[].image_url.url
-   Used by: tools.controller image_generation handler
-══════════════════════════════════════════════════════════════════ */
+/* ═══ 4b. GEMINI VISION — for chat image analysis ═══
+   DeepSeek V3 is text-only. When user sends an image in chat,
+   we route to Gemini Flash which HAS vision capability.
+   This function takes the image as base64 + user's text question. */
+async function geminiVision(textPrompt, base64Image, sys) {
+  return withRetry(async () => {
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: sys || MASTER_IDENTITY,
+      generationConfig: { temperature: 0.7, topP: 0.95 },
+    });
+
+    // Extract the actual base64 data and mime type from the data URL
+    let mimeType = 'image/jpeg';
+    let rawBase64 = base64Image;
+    if (base64Image.startsWith('data:')) {
+      const match = base64Image.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) { mimeType = match[1]; rawBase64 = match[2]; }
+    }
+
+    const parts = [
+      { text: textPrompt || 'Analyze this image and provide actionable business feedback.' },
+      { inlineData: { mimeType, data: rawBase64 } },
+    ];
+
+    const result = await model.generateContent(parts);
+    return result.response.text();
+  }, { tries: 2, baseDelay: 1000, label: 'geminiVision' });
+}
+
+/* ═══ 5. IMAGE GENERATION ═══
+   Primary: OpenRouter images.generate with x-ai/grok-2-image
+   Fallback: Gemini Flash native image generation (imagen-3.0-generate)
+   
+   OpenRouter's images.generate may or may not support Grok.
+   If it fails, we fall back to Google's Imagen via Gemini API. */
 async function generateImage(prompt, options = {}) {
   return withRetry(async () => {
-    const client = getOpenRouter();
-    const n = options.n || 1;
-    const imageUrls = [];
-    const imageData = options.imageData; // base64 reference image
+    const client = getOR();
+    const imageData = options.imageData; // base64 reference image if user uploaded one
 
-    for (let i = 0; i < n; i++) {
-      const messages = [];
-      if (imageData) {
-        messages.push({
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: imageData } }
-          ]
-        });
-      } else {
-        messages.push({ role: 'user', content: prompt });
-      }
+    // Build the message content
+    // Grok supports both text-to-image AND image+text editing
+    // via chat.completions with the image in the user message
+    const content = [];
 
-      const response = await client.chat.completions.create({
-        model: 'x-ai/grok-imagine-image-quality',
-        messages,
-        modalities: ['image', 'text'],
-      });
+    // If user uploaded a reference image, include it
+    if (imageData) {
+      const base64Url = imageData.startsWith('data:')
+        ? imageData
+        : `data:image/jpeg;base64,${imageData}`;
+      content.push({ type: 'image_url', image_url: { url: base64Url } });
+      content.push({ type: 'text', text: `Edit this image based on this instruction: ${prompt}` });
+    } else {
+      content.push({ type: 'text', text: `Generate an image: ${prompt}. Professional quality, high resolution, detailed, visually striking.` });
+    }
 
-      const message = response.choices?.[0]?.message;
+    const response = await client.chat.completions.create({
+      model: 'x-ai/grok-2-image',
+      messages: [
+        { role: 'user', content }
+      ],
+      max_tokens: 1024,
+    });
 
-      if (message?.images?.length) {
-        message.images.forEach(image => {
-          if (image.image_url?.url) imageUrls.push(image.image_url.url);
-        });
+    // Grok returns images in the response message
+    const message = response.choices?.[0]?.message;
+    const urls = [];
+
+    // Check for image URLs in content array
+    if (message?.content && Array.isArray(message.content)) {
+      for (const part of message.content) {
+        if (part.type === 'image_url' && part.image_url?.url) {
+          urls.push(part.image_url.url);
+        }
       }
     }
 
-    if (!imageUrls.length) throw new Error('No images returned from model');
-    return imageUrls;
-  }, { tries: 2, baseDelay: 1000, label: 'imageGen' });
+    // Check for images array (some API versions)
+    if (message?.images?.length) {
+      for (const img of message.images) {
+        if (img.url) urls.push(img.url);
+        else if (img.b64_json) urls.push(`data:image/png;base64,${img.b64_json}`);
+      }
+    }
+
+    // Check if the content itself is a URL string
+    if (!urls.length && typeof message?.content === 'string') {
+      const urlMatch = message.content.match(/https?:\/\/[^\s"'<>]+\.(png|jpg|jpeg|webp|gif)/gi);
+      if (urlMatch) urls.push(...urlMatch);
+    }
+
+    if (!urls.length) {
+      // Fallback: try Gemini imagen
+      try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const result = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: `Generate an image: ${prompt}` }] }],
+        });
+        const parts = result.response.candidates?.[0]?.content?.parts || [];
+        const geminiImages = parts
+          .filter(p => p.inlineData?.mimeType?.startsWith('image/'))
+          .map(p => `data:${p.inlineData.mimeType};base64,${p.inlineData.data}`);
+        if (geminiImages.length) return geminiImages;
+      } catch (e2) {
+        console.warn('[imageGen] Gemini fallback failed:', e2.message?.slice(0, 80));
+      }
+      throw new Error('Image generation failed. No images returned.');
+    }
+
+    return urls;
+  }, { tries: 2, baseDelay: 1500, label: 'imageGen' });
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   DAILY ACADEMY NEWS — uses Gemini Flash (free + fast)
-══════════════════════════════════════════════════════════════════ */
+/* ═══ DAILY ACADEMY NEWS — Gemini Flash ═══ */
 async function generateAcademyDaily() {
   return withRetry(async () => {
     const today = new Date().toISOString().slice(0, 10);
     const todayHuman = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-    const prompt = `Today is ${todayHuman}.
-
-You are the daily intelligence curator for Double Eight AI — a platform used EXCLUSIVELY by Arab entrepreneurs across the MENA region.
-
-GENERATE EXACTLY 3 BUSINESS INTELLIGENCE CARDS, ALL FOCUSED ON MENA.
-
-═══ CARD 1 — MENA MARKETS / ECONOMY ═══
-A real movement this week in MENA markets, currencies, commodities, or regional economies.
-Valid: Saudi Tadawul, UAE ADX/DFM, Egyptian EGX, Qatar QE, Kuwait Boursa, oil/gas, SAMA/CBUAE/CBE decisions, Vision 2030.
-INVALID: US markets, S&P 500, Bitcoin alone, European markets. STAY MENA.
-
-═══ CARD 2 — MENA FOUNDER SUCCESS STORY ═══
-A real Arab/MENA-based founder with a measurable recent success.
-MENA only — Saudi, UAE, Egyptian, Jordanian, Lebanese, Moroccan, Qatari, Kuwaiti, Bahraini, Omani founders.
-
-═══ CARD 3 — MENA OPPORTUNITY THIS WEEK ═══
-A trend, program, grant, accelerator, or market gap a MENA entrepreneur can ACT on within 7 days.
-
-═══ RULES ═══
-1. ALL 3 cards MUST be MENA. Zero exceptions.
-2. Real source URLs from: arabnews.com, gulfnews.com, thenationalnews.com, zawya.com, forbesmiddleeast.com, menabytes.com, wamda.com, gulfbusiness.com, argaam.com
-3. countryFlag must match (🇸🇦 🇦🇪 🇪🇬 🇶🇦 🇰🇼 🇧🇭 🇴🇲 🇯🇴 🇲🇦 🇱🇧)
-4. "opportunity" must be ONE concrete action this week
-
-Return ONLY this JSON:
-{
-  "cards": [
-    {"id":"card1","type":"market","icon":"📈","country":"<MENA>","countryFlag":"<emoji>","category":"MENA Markets","title":"<12 words>","summary":"<2 sentences>","opportunity":"<action>","source":"<name>","sourceUrl":"<url>"},
-    {"id":"card2","type":"success","icon":"🏆","country":"<MENA>","countryFlag":"<emoji>","category":"MENA Founder Story","title":"<12 words>","summary":"<2 sentences>","opportunity":"<tactic to steal>","source":"<name>","sourceUrl":"<url>"},
-    {"id":"card3","type":"opportunity","icon":"🚀","country":"<MENA>","countryFlag":"<emoji>","category":"MENA Opportunity","title":"<12 words>","summary":"<2 sentences>","opportunity":"<action in 7 days>","source":"<name>","sourceUrl":"<url>"}
-  ],
-  "generatedAt": "${today}"
-}`;
-
+    const prompt = `Today is ${todayHuman}. Generate 3 MENA-only business intelligence cards.
+CARD 1: MENA Markets. CARD 2: MENA Founder story. CARD 3: MENA Opportunity this week.
+All MENA. Real URLs from arabnews.com/gulfnews.com/zawya.com/forbesmiddleeast.com/menabytes.com. Correct flag emoji.
+Return ONLY JSON:
+{"cards":[{"id":"card1","type":"market","icon":"📈","country":"","countryFlag":"","category":"MENA Markets","title":"","summary":"","opportunity":"","source":"","sourceUrl":""},{"id":"card2","type":"success","icon":"🏆","country":"","countryFlag":"","category":"MENA Founder Story","title":"","summary":"","opportunity":"","source":"","sourceUrl":""},{"id":"card3","type":"opportunity","icon":"🚀","country":"","countryFlag":"","category":"MENA Opportunity","title":"","summary":"","opportunity":"","source":"","sourceUrl":""}],"generatedAt":"${today}"}`;
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: 'You are the daily intelligence curator for Double Eight AI. Every output is MENA-only. Return ONLY valid JSON.',
+      systemInstruction: 'MENA-only intelligence curator. Return ONLY valid JSON.',
       generationConfig: { temperature: 0.8, topP: 0.95, responseMimeType: 'application/json' },
     });
     const result = await model.generateContent(prompt);
@@ -351,6 +257,7 @@ Return ONLY this JSON:
 
 module.exports = {
   geminiChat,
+  geminiVision,
   openrouterChat,
   openaiChat,
   deepseekChat,

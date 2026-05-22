@@ -1,5 +1,6 @@
 const {
   geminiChat,
+  geminiVision,
   openrouterChat,
   openaiChat,
   deepseekChat,
@@ -83,24 +84,36 @@ async function streamChat(messages, type, onChunk, language) {
     sysMsg += `\n\nCRITICAL: Respond ENTIRELY in Modern Standard Arabic (الفصحى). Keep brand names and URLs in original language. Never respond in English.`;
   }
 
-  // Build messages array — support vision (imageData) on the last user message
-  const deepseekMessages = messages.map((m, idx) => {
-    const isLastUser = idx === messages.length - 1 && m.role === 'user';
-    // If this is the last user message and has an image attached, use vision format
-    if (isLastUser && m.imageData) {
-      const base64 = m.imageData.startsWith('data:')
-        ? m.imageData
-        : `data:image/jpeg;base64,${m.imageData}`;
-      return {
-        role: 'user',
-        content: [
-          { type: 'text', text: m.content || 'Please analyze this image.' },
-          { type: 'image_url', image_url: { url: base64 } },
-        ],
-      };
+  // Check if the last message has an image attached
+  const lastMsg = messages[messages.length - 1];
+  if (lastMsg && lastMsg.imageData) {
+    // DeepSeek V3 is TEXT-ONLY. Route image analysis to Gemini Vision.
+    try {
+      const visionResponse = await geminiVision(
+        lastMsg.content || 'Analyze this image and give actionable business feedback.',
+        lastMsg.imageData,
+        sysMsg
+      );
+      // Stream the response character by character for SSE
+      const chunks = visionResponse.match(/.{1,20}/g) || [visionResponse];
+      for (const chunk of chunks) {
+        if (onChunk) onChunk(chunk);
+        await new Promise(r => setTimeout(r, 15));
+      }
+      return visionResponse;
+    } catch (err) {
+      console.error('Gemini Vision failed:', err.message);
+      const fallback = 'I received your image but could not analyze it right now. Please describe what you see and I will help.';
+      if (onChunk) onChunk(fallback);
+      return fallback;
     }
-    return { role: m.role === 'user' ? 'user' : 'assistant', content: m.content };
-  });
+  }
+
+  // No image — use DeepSeek for text chat
+  const deepseekMessages = messages.map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content,
+  }));
 
   return deepseekStream(deepseekMessages, sysMsg, onChunk);
 }
@@ -614,90 +627,183 @@ async function generateWebsiteCreation(inputs) {
   const isAr = inputs.language === 'ar';
   const name = (inputs.businessName || 'My Business').trim();
 
-  // ── STEP 1: Deterministic replace (instant, zero AI, always works) ──
+  // STEP 0: Deterministic base replace (instant — colors, brand name, fonts)
   let html = applyFallbackEdits(template, inputs);
   if (isAr) {
     html = html.replace(/<html([^>]*)lang="en"/, '<html$1lang="ar" dir="rtl"');
     html = html.replace(/<html([^>]*)>(?![^]*dir=)/, '<html$1 dir="rtl">');
   }
 
-  // ── STEP 2: Ask DeepSeek to generate ONLY business copy as JSON ──
-  // (~400 tokens in, ~600 tokens out — never truncates, always fast)
+  /* ═══════════════════════════════════════════════════════════
+     STEP 1 — MODEL 1 (DeepSeek): Read user input → write creative brief
+     DeepSeek understands the business and writes compelling copy.
+     Output: raw text brief with all the content pieces.
+  ═══════════════════════════════════════════════════════════ */
+  let brief;
   try {
-    const copyPrompt = `Write website copy for this business. Return ONLY valid JSON.
+    const step1prompt = `You are a creative director. A client needs a ${inputs.content || 'business'} website for "${name}".
 
-Business: ${name}
-Type: ${inputs.content || 'Business / Company'}
-Extra details: ${inputs.extraDetails || 'none'}
-${isAr ? 'Write ALL text in Arabic.' : 'Write in English.'}
+Details from the client:
+- Color style: ${inputs.colors || 'Dark & Gold'}
+- Font preference: ${inputs.fonts || 'Modern Sans-Serif'}
+- Sections wanted: ${inputs.sections || 'Full website'}
+- Special requests: ${inputs.extraDetails || 'None'}
+- Language: ${isAr ? 'ARABIC — write ALL text in Arabic' : 'English'}
 
-JSON structure:
+Write the ACTUAL website copy. Be specific to THIS business. No generic text.
+${isAr ? 'Write everything in Arabic.' : ''}
+
+HERO SECTION:
+- Badge text (5-8 words, like "Trusted by 1,000+ businesses")
+- Main headline (8-12 words, powerful)
+- Subtitle (2 compelling sentences)
+- Primary button text
+- Secondary button text
+
+FEATURES (3 features):
+- Feature 1: emoji icon, title, description (2 sentences)
+- Feature 2: emoji icon, title, description
+- Feature 3: emoji icon, title, description
+
+ABOUT SECTION:
+- Section title
+- Paragraph 1 (brand story, 2-3 sentences)
+- Paragraph 2 (mission, 2-3 sentences)
+
+TESTIMONIALS (3 clients):
+- Testimonial 1: quote (2 sentences), person name, their title
+- Testimonial 2: quote, name, title
+- Testimonial 3: quote, name, title
+
+CONTACT:
+- Section headline
+- Section subtitle
+
+FOOTER:
+- Brand tagline (1 sentence)`;
+
+    brief = await deepseekChat(step1prompt,
+      'Creative director. Write specific, compelling website copy. No placeholders. No markdown formatting.',
+      { temperature: 0.8, maxTokens: 1500 });
+  } catch (err) {
+    console.warn('[website] Model 1 (DeepSeek brief) failed:', err.message);
+    return html; // Return template with just colors/brand replaced — still works
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     STEP 2 — MODEL 2 (Claude Haiku): Extract structured JSON from brief
+     Claude reads the brief and returns a clean JSON object.
+     NO HTML processing. Just text extraction into key-value pairs.
+     This keeps the response small (~800 tokens) and never truncates.
+  ═══════════════════════════════════════════════════════════ */
+  try {
+    const step2prompt = `Extract the website copy from this creative brief and return it as JSON.
+
+BRIEF:
+${brief}
+
+Return ONLY valid JSON (no markdown, no backticks):
 {
-  "navBrand": "brand/logo text",
-  "heroHeadline": "compelling headline 8-12 words",
-  "heroSub": "2-sentence subtitle describing the business value",
-  "cta1": "primary button 2-4 words",
-  "cta2": "secondary button 2-3 words",
-  "feat1Title": "feature 1 title", "feat1Desc": "feature 1 description 1-2 sentences",
-  "feat2Title": "feature 2 title", "feat2Desc": "feature 2 description",
-  "feat3Title": "feature 3 title", "feat3Desc": "feature 3 description",
+  "badge": "badge text",
+  "headline": "main headline",
+  "subtitle": "subtitle paragraph",
+  "cta1": "primary button",
+  "cta2": "secondary button",
+  "f1icon": "emoji", "f1title": "feature 1 title", "f1desc": "feature 1 description",
+  "f2icon": "emoji", "f2title": "feature 2 title", "f2desc": "feature 2 description",
+  "f3icon": "emoji", "f3title": "feature 3 title", "f3desc": "feature 3 description",
   "aboutTitle": "about section title",
-  "aboutText": "2-3 sentences about the company",
-  "t1": "testimonial 1 (2 sentences)", "t1Name": "name", "t1Role": "title, company",
-  "t2": "testimonial 2", "t2Name": "name", "t2Role": "title, company",
-  "t3": "testimonial 3", "t3Name": "name", "t3Role": "title, company",
-  "contactTitle": "contact section title",
-  "contactSub": "contact subtitle 1 sentence",
-  "footerTagline": "footer brand description 1 sentence"
+  "aboutP1": "about paragraph 1",
+  "aboutP2": "about paragraph 2",
+  "t1quote": "testimonial 1 quote", "t1name": "name", "t1role": "title, company",
+  "t2quote": "testimonial 2 quote", "t2name": "name", "t2role": "title, company",
+  "t3quote": "testimonial 3 quote", "t3name": "name", "t3role": "title, company",
+  "contactTitle": "contact headline",
+  "contactSub": "contact subtitle",
+  "footerTagline": "footer tagline"
 }`;
 
-    const raw = await deepseekChat(
-      copyPrompt,
-      'Professional copywriter. Return ONLY valid JSON. No markdown.',
-      { temperature: 0.7, json: true, maxTokens: 1200 }
-    );
+    const raw2 = await openrouterChat(step2prompt,
+      'Data extractor. Return ONLY valid JSON. No markdown.',
+      { temperature: 0.2, maxTokens: 1200, json: true, model: 'anthropic/claude-3-haiku' });
 
     let copy;
     try {
-      copy = JSON.parse(String(raw).trim().replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/i,'').trim());
+      const clean = String(raw2).trim()
+        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+      copy = JSON.parse(clean);
     } catch { copy = null; }
 
     if (copy) {
-      // Inject copy into the deterministically-replaced template
-      const rep = (from, to) => { if (to) html = html.split(from).join(to); };
-
-      // Nav brand
-      rep('{{BRAND_NAME}}', copy.navBrand || name);
+      /* ═══════════════════════════════════════════════════════════
+         STEP 3 — CODE: Inject the structured copy into the HTML template
+         Pure string replacement. No AI. Instant. Never fails.
+      ═══════════════════════════════════════════════════════════ */
+      const r = (search, val) => { if (val) html = html.replace(search, val); };
 
       // Hero
-      if (copy.heroHeadline) {
-        html = html.replace(/<h1[^>]*>([^<]*<[^>]*>[^<]*<\/[^>]*>)?[^<]*<\/h1>/i,
-          `<h1>${copy.heroHeadline}</h1>`);
+      r(/✦[^<]*<\/span>/, `✦ ${copy.badge || name}</span>`);
+      if (copy.headline) {
+        // Replace the <h1> content, preserving <span class="accent"> on first 2 words
+        const words = copy.headline.split(' ');
+        const accent = words.slice(0, 2).join(' ');
+        const rest = words.slice(2).join(' ');
+        html = html.replace(/<h1>[^]*?<\/h1>/,
+          `<h1>${rest ? rest + ' ' : ''}<span class="accent">${accent}</span></h1>`);
       }
-      if (copy.heroSub) {
-        html = html.replace(/<p class="hero[^"]*">[^<]*<\/p>/i, `<p>${copy.heroSub}</p>`);
+      if (copy.subtitle) {
+        // Replace first <p> after hero heading
+        html = html.replace(
+          /(<div class="hero-cta">)/,
+          `<p>${copy.subtitle}</p>\n      $1`
+        ).replace(/<p>We help ambitious[^<]*<\/p>\s*/, '');
       }
-      rep('Start Today →', copy.cta1 || 'Get Started');
-      rep('Learn More', copy.cta2 || 'Learn More');
+      r('Start Today →', copy.cta1);
+      r('Learn More', copy.cta2);
 
-      // Features — replace heading text nodes carefully
-      ['1','2','3'].forEach(n => {
-        const t = copy[`feat${n}Title`];
-        const d = copy[`feat${n}Desc`];
-        if (t) html = html.replace(new RegExp(`feat${n}-title`), t);
-        if (d) html = html.replace(new RegExp(`feat${n}-desc`), d);
+      // Features — find the 3 feature blocks and replace content
+      const featureRegex = /<div class="feature-icon">([^<]*)<\/div>\s*<h3>([^<]*)<\/h3>\s*<p>([^<]*)<\/p>/g;
+      let featIdx = 0;
+      html = html.replace(featureRegex, (match) => {
+        featIdx++;
+        const icon = copy[`f${featIdx}icon`] || '⚡';
+        const title = copy[`f${featIdx}title`] || '';
+        const desc = copy[`f${featIdx}desc`] || '';
+        if (title) return `<div class="feature-icon">${icon}</div>\n        <h3>${title}</h3>\n        <p>${desc}</p>`;
+        return match;
       });
 
       // About
-      if (copy.aboutTitle) html = html.replace(/Built for businesses[^<]*/i, copy.aboutTitle);
-      if (copy.aboutText) html = html.replace(/We help ambitious[^<]*/i, copy.aboutText);
+      if (copy.aboutTitle) r('Built for businesses that refuse to settle', copy.aboutTitle);
+      if (copy.aboutP1) {
+        html = html.replace(
+          /was founded on a simple belief[^<]*/,
+          copy.aboutP1.replace(/</g, '&lt;')
+        );
+      }
+
+      // Testimonials — replace the 3 testimonial quotes
+      const tRegex = /<p>([^<]*)<\/p>\s*<div class="testimonial-author">\s*<div class="author-avatar">([^<]*)<\/div>\s*<div class="author-info"><div class="author-name">([^<]*)<\/div><div class="author-title">([^<]*)<\/div>/g;
+      let tIdx = 0;
+      html = html.replace(tRegex, (match, q, av, n, role) => {
+        tIdx++;
+        const quote = copy[`t${tIdx}quote`] || q;
+        const tname = copy[`t${tIdx}name`] || n;
+        const trole = copy[`t${tIdx}role`] || role;
+        const initials = tname.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        return `<p>${quote}</p>\n        <div class="testimonial-author">\n          <div class="author-avatar">${initials}</div>\n          <div class="author-info"><div class="author-name">${tname}</div><div class="author-title">${trole}</div>`;
+      });
+
+      // Contact
+      if (copy.contactTitle) r("Let's build something together", copy.contactTitle);
+      if (copy.contactSub) r('Tell us about your business', copy.contactSub);
 
       // Footer
-      if (copy.footerTagline) html = html.replace(/Premium strategy[^<]*/i, copy.footerTagline);
+      if (copy.footerTagline) r('Premium strategy and execution for ambitious businesses. We turn ideas into measurable results.', copy.footerTagline);
     }
   } catch (err) {
-    console.warn('Website copy generation failed, using template defaults:', err.message);
-    // Fallback is already applied above — still a working site
+    console.warn('[website] Model 2 (Claude JSON extract) failed:', err.message);
+    // Fallback: template with colors + brand already applied — still a valid website
   }
 
   return html;
