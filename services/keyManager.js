@@ -132,10 +132,9 @@ async function withKeyFallback(provider, fn) {
           break;
 
         default:
-          // Unknown error — don't disable key, re-throw immediately
-          // (could be a prompt/model error, not a key problem)
-          console.warn(`[keyManager] ${provider} key ${shortKey} — unknown error: ${err.message?.slice(0, 100)}`);
-          throw err;
+          // Unknown error — disable briefly and try next key
+          disableKey(provider, key, 30_000, `unknown error: ${err.message?.slice(0, 60)}`);
+          break;
       }
 
       console.warn(`[keyManager] ${provider} key ${shortKey} failed (${type}), trying next key...`);

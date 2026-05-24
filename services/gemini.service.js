@@ -30,8 +30,6 @@ const MASTER_IDENTITY = `You are the AI core of Double Eight AI — the first bu
 Your users are first-generation entrepreneurs with limited budgets and unlimited ambition.
 Principles: Specificity, Respect, Cultural Awareness, Always Actionable, Honest.`;
 
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
 function arabicDirective(lang) {
   if (lang !== 'ar') return '';
   return `\n\nCRITICAL: Write ENTIRE response in Modern Standard Arabic (الفصحى). Keep proper nouns in original. Never respond in English.`;
