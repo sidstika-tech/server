@@ -118,6 +118,7 @@ app.use('/api/business-dna',    require('./routes/businessDNA.routes'));
 app.use('/api/launch-package',  require('./routes/launchPackage.routes'));
 app.use('/api/notifications',   require('./routes/notification.routes'));
 app.use('/api/competitors',     require('./routes/competitor.routes'));
+app.use('/api/messaging',       require('./routes/messaging.routes'));
 
 app.get('/api/health', (req,res) => res.json({ status:'OK', service:'Double Eight AI', timestamp:new Date().toISOString() }));
 
